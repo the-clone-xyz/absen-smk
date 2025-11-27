@@ -46,7 +46,7 @@ const adminMenu = computed(() => [
         name: "Rekap Absensi",
         description: "Laporan Detail Absensi Siswa dan Guru",
         icon: CalendarDaysIcon,
-        route: route("admin.dashboard"), // Placeholder (Belum ada rute rekap admin)
+        route: route("admin.attendance.report"), // Placeholder (Belum ada rute rekap admin)
         statValue: "Lihat",
         statLabel: "Laporan",
     },

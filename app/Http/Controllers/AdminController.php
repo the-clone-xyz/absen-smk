@@ -216,4 +216,50 @@ class AdminController extends Controller
         \App\Models\Schedule::findOrFail($id)->delete();
         return back()->with('success', 'Jadwal berhasil dihapus.');
     }
+
+
+    // ===============================================
+    // 5. LAPORAN ABSENSI (REPORT)
+    // ===============================================
+
+    public function attendanceReport(Request $request)
+    {
+        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
+        $classId = $request->input('class_id');
+
+        // Query Data Absensi dengan Filter
+        $query = \App\Models\Attendance::with(['user.student.kelas']) // Eager Load relasi
+                    ->whereBetween('date', [$startDate, $endDate]);
+
+        // Filter berdasarkan Kelas (jika dipilih)
+        if ($classId) {
+            $query->whereHas('user.student', function($q) use ($classId) {
+                $q->where('class_id', $classId);
+            });
+        }
+
+        $attendances = $query->latest('date')->get();
+        $classes = Kelas::orderBy('name')->get();
+
+        // Jika permintaan adalah "Cetak" (Print Mode)
+        if ($request->has('print')) {
+            return view('print.attendance_report', [
+                'attendances' => $attendances,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'kelas_nama' => $classId ? Kelas::find($classId)->name : 'Semua Kelas'
+            ]);
+        }
+
+        return Inertia::render('Admin/Attendance/Report', [
+            'attendances' => $attendances,
+            'classes' => $classes,
+            'filters' => [
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'class_id' => $classId
+            ]
+        ]);
+    }
 }

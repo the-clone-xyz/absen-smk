@@ -93,6 +93,9 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
         Route::delete('/{kelas}', [AdminController::class, 'destroyKelas'])->name('destroy');
     });
 
+    //print absen
+    Route::get('/reports/attendance', [AdminController::class, 'attendanceReport'])->name('attendance.report');
+
     // MANAJEMEN GURU
     Route::resource('teachers', \App\Http\Controllers\AdminTeacherController::class)->names('teachers');
     // 5. Manajemen Siswa (Resource)
