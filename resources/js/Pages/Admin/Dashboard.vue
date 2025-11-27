@@ -66,6 +66,31 @@ const adminMenu = computed(() => [
         statValue: "Atur",
         statLabel: "Sistem",
     },
+    {
+        name: "Data Siswa",
+        description: "Input Siswa, Buat Akun Otomatis",
+        icon: UserGroupIcon, // Pastikan icon diimport
+        route: route("admin.students.index"), // Link ke halaman yang baru kita buat
+        statValue: "Kelola",
+        statLabel: "Action",
+    },
+    // Tambahkan item ini ke dalam array adminMenu:
+    {
+        name: "Jadwal Pelajaran",
+        description: "Plotting Guru, Mapel, dan Kelas",
+        icon: CalendarDaysIcon,
+        route: route("admin.schedules.index"),
+        statValue: "Atur",
+        statLabel: "Jadwal",
+    },
+    {
+        name: "Manajemen Guru", // Ganti nama menu
+        description: "Data Pengajar & Akun",
+        icon: UserGroupIcon,
+        route: route("admin.teachers.index"), // <--- Link ke index guru
+        statValue: props.stats.teachers,
+        statLabel: "Total Guru",
+    },
 ]);
 </script>
 

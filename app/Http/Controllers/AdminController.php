@@ -61,7 +61,7 @@ class AdminController extends Controller
     public function subjectManagement()
     {
         $subjects = Subject::orderBy('name', 'asc')->get();
-        return Inertia::render('Admin/SubjectManagement', [
+        return Inertia::render('Admin/Subjects/Index', [
             'subjects' => $subjects
         ]);
     }
@@ -114,7 +114,7 @@ class AdminController extends Controller
     public function classManagement()
     {
         $classes = Kelas::orderBy('name', 'asc')->get();
-        return Inertia::render('Admin/ClassManagement', [
+        return Inertia::render('Admin/Classes/Index', [
             'classes' => $classes
         ]);
     }
@@ -123,7 +123,7 @@ class AdminController extends Controller
     public function storeKelas(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:100|unique:classes,name',
+            'name' => 'required|string|max:100|unique:kelas,name',
             'level' => 'required|in:X,XI,XII', // Contoh level kelas
         ], [
             'name.unique' => 'Kelas dengan nama ini sudah ada.',
@@ -139,7 +139,7 @@ class AdminController extends Controller
     public function updateKelas(Request $request, Kelas $kelas)
     {
         $request->validate([
-            'name' => 'required|string|max:100|unique:classes,name,' . $kelas->id,
+            'name' => 'required|string|max:100|unique:kelas,name,' . $kelas->id,
             'level' => 'required|in:X,XI,XII',
         ]);
 
@@ -158,5 +158,62 @@ class AdminController extends Controller
             // Perlu dicek apakah ada siswa yang terikat dengan kelas ini
             return Redirect::route('admin.classes.index')->with('error', 'Gagal menghapus. Kelas masih memiliki siswa terdaftar.');
         }
+    }
+
+    // ===============================================
+    // 4. MANAJEMEN JADWAL (SCHEDULES)
+    // ===============================================
+
+    // Halaman Manajemen Jadwal
+    public function scheduleManagement(Request $request)
+    {
+        // Ambil Data Pendukung untuk Dropdown
+        $classes = Kelas::orderBy('name')->get();
+        $subjects = Subject::orderBy('name')->get();
+        // Ambil Guru beserta nama User-nya
+        $teachers = \App\Models\Teacher::with('user')->get(); 
+
+        // Filter Jadwal Berdasarkan Kelas yang Dipilih (Jika ada)
+        $query = \App\Models\Schedule::with(['class', 'subject', 'teacher.user'])
+                    ->orderByRaw("FIELD(day, 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu')")
+                    ->orderBy('start_time');
+
+        if ($request->has('class_id') && $request->class_id != null) {
+            $query->where('class_id', $request->class_id);
+        }
+
+        $schedules = $query->get();
+
+        return Inertia::render('Admin/Schedules/Index', [
+            'schedules' => $schedules,
+            'classes' => $classes,
+            'subjects' => $subjects,
+            'teachers' => $teachers,
+            'filters' => $request->only(['class_id'])
+        ]);
+    }
+
+    // Simpan Jadwal Baru
+    public function storeSchedule(Request $request)
+    {
+        $request->validate([
+            'class_id' => 'required|exists:kelas,id',
+            'subject_id' => 'required|exists:subjects,id',
+            'teacher_id' => 'required|exists:teachers,id',
+            'day' => 'required|string',
+            'start_time' => 'required',
+            'end_time' => 'required|after:start_time',
+        ]);
+
+        \App\Models\Schedule::create($request->all());
+
+        return back()->with('success', 'Jadwal berhasil ditambahkan.');
+    }
+
+    // Hapus Jadwal
+    public function destroySchedule($id)
+    {
+        \App\Models\Schedule::findOrFail($id)->delete();
+        return back()->with('success', 'Jadwal berhasil dihapus.');
     }
 }
