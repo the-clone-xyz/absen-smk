@@ -114,8 +114,10 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
     // API untuk fetch token baru (Admin)
     Route::get('/settings/get-qr-token', [AdminController::class, 'getQrToken'])->name('settings.get_qr');
 
-    // 7. Pengaturan Sistem (Placeholder dulu)
-    Route::get('/settings/attendance', function() { return Inertia::render('Admin/Settings/Attendance'); })->name('settings.attendance');
+   // 7. PENGATURAN SISTEM
+    Route::get('/settings/attendance', [AdminController::class, 'attendanceSettings'])->name('settings.attendance');
+    // Rute baru untuk simpan:
+    Route::patch('/settings/attendance', [AdminController::class, 'updateSettings'])->name('settings.update');
 });
 
 // =========================================================================

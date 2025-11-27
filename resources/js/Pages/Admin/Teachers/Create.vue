@@ -5,8 +5,9 @@ import {
     ArrowLeftIcon,
     CameraIcon,
     UserCircleIcon,
+    InformationCircleIcon,
 } from "@heroicons/vue/24/solid";
-import { ref } from "vue";
+import { ref, computed } from "vue";
 
 const photoPreview = ref(null);
 const form = useForm({
@@ -15,6 +16,17 @@ const form = useForm({
     phone: "",
     address: "",
     photo: null,
+});
+
+// LOGIKA TEXT LOGIN DINAMIS
+const loginInfo = computed(() => {
+    if (form.nip) {
+        return { user: form.nip, pass: form.nip };
+    } else if (form.phone) {
+        return { user: form.phone, pass: form.phone };
+    } else {
+        return { user: "...", pass: "..." };
+    }
 });
 
 const handleFileUpload = (event) => {
@@ -68,7 +80,7 @@ const submit = () => {
                             />
 
                             <label
-                                class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-white text-xs font-bold"
+                                class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-white text-xs font-bold cursor-pointer"
                             >
                                 <CameraIcon class="w-6 h-6 mb-1" /> Upload
                                 <input
@@ -79,8 +91,9 @@ const submit = () => {
                                 />
                             </label>
                         </div>
+                        <p class="text-xs text-gray-400 mt-2">Foto Opsional</p>
                         <p
-                            class="text-xs text-red-500 mt-2"
+                            class="text-xs text-red-500 mt-1"
                             v-if="form.errors.photo"
                         >
                             {{ form.errors.photo }}
@@ -95,44 +108,61 @@ const submit = () => {
                         <input
                             v-model="form.name"
                             type="text"
-                            class="w-full rounded-lg border-gray-300 focus:ring-red-500"
+                            class="w-full rounded-lg border-gray-300 focus:ring-purple-500"
                             placeholder="Contoh: Budi Santoso, S.Pd"
                             required
                         />
+                        <div
+                            v-if="form.errors.name"
+                            class="text-red-500 text-xs mt-1"
+                        >
+                            {{ form.errors.name }}
+                        </div>
                     </div>
 
-                    <div>
-                        <label
-                            class="block text-sm font-bold text-gray-700 mb-1"
-                            >NIP (Nomor Induk Pegawai)</label
-                        >
-                        <input
-                            v-model="form.nip"
-                            type="number"
-                            class="w-full rounded-lg border-gray-300 focus:ring-red-500"
-                            placeholder="1980xxxx"
-                            required
-                        />
-                        <p
-                            v-if="form.errors.nip"
-                            class="text-xs text-red-500 mt-1"
-                        >
-                            {{ form.errors.nip }}
-                        </p>
-                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label
+                                class="block text-sm font-bold text-gray-700 mb-1"
+                            >
+                                NIP
+                                <span class="text-gray-400 font-normal"
+                                    >(Opsional)</span
+                                >
+                            </label>
+                            <input
+                                v-model="form.nip"
+                                type="number"
+                                class="w-full rounded-lg border-gray-300 focus:ring-purple-500"
+                                placeholder="Kosongkan jika tidak ada"
+                            />
+                            <div
+                                v-if="form.errors.nip"
+                                class="text-red-500 text-xs mt-1"
+                            >
+                                {{ form.errors.nip }}
+                            </div>
+                        </div>
 
-                    <div>
-                        <label
-                            class="block text-sm font-bold text-gray-700 mb-1"
-                            >Nomor HP / WhatsApp</label
-                        >
-                        <input
-                            v-model="form.phone"
-                            type="text"
-                            class="w-full rounded-lg border-gray-300 focus:ring-red-500"
-                            placeholder="0812xxxx"
-                            required
-                        />
+                        <div>
+                            <label
+                                class="block text-sm font-bold text-gray-700 mb-1"
+                                >Nomor HP / WhatsApp</label
+                            >
+                            <input
+                                v-model="form.phone"
+                                type="text"
+                                class="w-full rounded-lg border-gray-300 focus:ring-purple-500"
+                                placeholder="0812xxxx"
+                                required
+                            />
+                            <div
+                                v-if="form.errors.phone"
+                                class="text-red-500 text-xs mt-1"
+                            >
+                                {{ form.errors.phone }}
+                            </div>
+                        </div>
                     </div>
 
                     <div>
@@ -143,25 +173,37 @@ const submit = () => {
                         <textarea
                             v-model="form.address"
                             rows="2"
-                            class="w-full rounded-lg border-gray-300 focus:ring-red-500"
+                            class="w-full rounded-lg border-gray-300 focus:ring-purple-500"
                         ></textarea>
                     </div>
 
                     <div
-                        class="bg-yellow-50 p-4 rounded-lg text-sm text-yellow-800 border border-yellow-200"
+                        class="bg-yellow-50 p-4 rounded-lg text-sm text-yellow-800 border border-yellow-200 flex gap-3 items-start"
                     >
-                        <p class="font-bold">🔐 Akun Login Guru:</p>
-                        <ul class="list-disc ml-5 mt-1">
-                            <li>Email: <b>[NIP]@guru.smk.sch.id</b></li>
-                            <li>Password: <b>[NIP]</b></li>
-                        </ul>
+                        <InformationCircleIcon
+                            class="w-6 h-6 text-yellow-600 flex-shrink-0"
+                        />
+                        <div>
+                            <p class="font-bold mb-1">Akun Login Guru:</p>
+                            <p>
+                                Username:
+                                <b>{{ loginInfo.user }}@guru.smk.sch.id</b>
+                            </p>
+                            <p>
+                                Password: <b>{{ loginInfo.pass }}</b>
+                            </p>
+                            <p class="text-xs text-yellow-700 mt-1 italic">
+                                *Jika NIP kosong, Nomor HP akan digunakan
+                                sebagai Username & Password.
+                            </p>
+                        </div>
                     </div>
 
                     <div class="flex justify-end pt-4 border-t border-gray-100">
                         <button
                             type="submit"
                             :disabled="form.processing"
-                            class="bg-red-600 text-white px-8 py-2.5 rounded-lg font-bold hover:bg-red-700 transition shadow-lg disabled:opacity-50"
+                            class="bg-purple-600 text-white px-8 py-2.5 rounded-lg font-bold hover:bg-purple-700 transition shadow-lg disabled:opacity-50 flex items-center gap-2"
                         >
                             <span v-if="form.processing">Menyimpan...</span>
                             <span v-else>Simpan Data Guru</span>

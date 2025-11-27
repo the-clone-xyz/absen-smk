@@ -1,6 +1,6 @@
 <script setup>
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
-import { Head, Link, router } from "@inertiajs/vue3";
+import { Head, Link, useForm } from "@inertiajs/vue3";
 import {
     UserGroupIcon,
     PlusIcon,
@@ -8,8 +8,11 @@ import {
     PencilSquareIcon,
     TrashIcon,
     AcademicCapIcon,
+    XMarkIcon,
+    KeyIcon,
 } from "@heroicons/vue/24/solid";
 import { ref, watch } from "vue";
+import { router } from "@inertiajs/vue3";
 
 const props = defineProps({
     teachers: Object,
@@ -17,7 +20,21 @@ const props = defineProps({
 });
 
 const search = ref(props.filters.search || "");
+const showEditModal = ref(false);
+const editingTeacher = ref(null);
 
+// Form Edit
+const form = useForm({
+    id: "",
+    name: "",
+    nip: "",
+    phone: "",
+    address: "",
+    password_option: "", // '', 'manual', 'random'
+    new_password: "",
+});
+
+// Search
 watch(search, (value) => {
     router.get(
         route("admin.teachers.index"),
@@ -29,6 +46,29 @@ watch(search, (value) => {
         }
     );
 });
+
+// Buka Modal Edit
+const openEditModal = (teacher) => {
+    editingTeacher.value = teacher;
+    form.id = teacher.id;
+    form.name = teacher.user.name;
+    form.nip = teacher.nip;
+    form.phone = teacher.phone;
+    form.address = teacher.address;
+    form.password_option = ""; // Reset pilihan password
+    form.new_password = "";
+    showEditModal.value = true;
+};
+
+// Submit Edit
+const submitEdit = () => {
+    form.patch(route("admin.teachers.update", form.id), {
+        onSuccess: () => {
+            showEditModal.value = false;
+            form.reset();
+        },
+    });
+};
 
 const deleteTeacher = (item) => {
     if (confirm(`Yakin hapus Guru ${item.user.name}?`)) {
@@ -146,45 +186,186 @@ const deleteTeacher = (item) => {
                                     }}</span>
                                 </td>
                                 <td class="px-6 py-4 text-center">
-                                    <button
-                                        @click="deleteTeacher(item)"
-                                        class="text-red-600 hover:text-red-800"
-                                    >
-                                        <TrashIcon class="w-5 h-5" />
-                                    </button>
-                                </td>
-                            </tr>
-                            <tr v-if="teachers.data.length === 0">
-                                <td
-                                    colspan="4"
-                                    class="px-6 py-8 text-center text-gray-500"
-                                >
-                                    Belum ada data guru.
+                                    <div class="flex justify-center gap-2">
+                                        <button
+                                            @click="openEditModal(item)"
+                                            class="text-blue-600 hover:text-blue-800 bg-blue-50 p-2 rounded-lg transition"
+                                        >
+                                            <PencilSquareIcon class="w-5 h-5" />
+                                        </button>
+                                        <button
+                                            @click="deleteTeacher(item)"
+                                            class="text-red-600 hover:text-red-800 bg-red-50 p-2 rounded-lg transition"
+                                        >
+                                            <TrashIcon class="w-5 h-5" />
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
+            </div>
+        </div>
 
+        <div
+            v-if="showEditModal"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+        >
+            <div
+                class="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+            >
                 <div
-                    class="bg-gray-50 px-4 py-3 border-t border-gray-200 sm:px-6"
-                    v-if="teachers.links.length > 3"
+                    class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 sticky top-0"
                 >
-                    <div class="flex justify-end gap-1">
-                        <Link
-                            v-for="(link, k) in teachers.links"
-                            :key="k"
-                            :href="link.url || '#'"
-                            v-html="link.label"
-                            class="px-3 py-1 border rounded text-sm"
-                            :class="
-                                link.active
-                                    ? 'bg-red-600 text-white'
-                                    : 'bg-white text-gray-500 hover:bg-gray-100'
-                            "
-                        />
-                    </div>
+                    <h3 class="font-bold text-gray-800 text-lg">
+                        Edit Data Guru
+                    </h3>
+                    <button
+                        @click="showEditModal = false"
+                        class="text-gray-400 hover:text-red-500"
+                    >
+                        <XMarkIcon class="w-6 h-6" />
+                    </button>
                 </div>
+
+                <form @submit.prevent="submitEdit" class="p-6 space-y-4">
+                    <div>
+                        <label
+                            class="block text-sm font-bold text-gray-700 mb-1"
+                            >Nama Lengkap</label
+                        >
+                        <input
+                            v-model="form.name"
+                            type="text"
+                            class="w-full rounded-lg border-gray-300 focus:ring-red-500"
+                        />
+                        <p
+                            v-if="form.errors.name"
+                            class="text-xs text-red-500 mt-1"
+                        >
+                            {{ form.errors.name }}
+                        </p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label
+                                class="block text-sm font-bold text-gray-700 mb-1"
+                                >NIP</label
+                            >
+                            <input
+                                v-model="form.nip"
+                                type="text"
+                                class="w-full rounded-lg border-gray-300 focus:ring-red-500"
+                            />
+                        </div>
+                        <div>
+                            <label
+                                class="block text-sm font-bold text-gray-700 mb-1"
+                                >No HP</label
+                            >
+                            <input
+                                v-model="form.phone"
+                                type="text"
+                                class="w-full rounded-lg border-gray-300 focus:ring-red-500"
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label
+                            class="block text-sm font-bold text-gray-700 mb-1"
+                            >Alamat</label
+                        >
+                        <textarea
+                            v-model="form.address"
+                            rows="2"
+                            class="w-full rounded-lg border-gray-300 focus:ring-red-500"
+                        ></textarea>
+                    </div>
+
+                    <div class="border-t border-gray-100 pt-4 mt-2">
+                        <label
+                            class="block text-sm font-bold text-gray-800 mb-2 flex items-center gap-2"
+                        >
+                            <KeyIcon class="w-4 h-4 text-yellow-600" /> Reset
+                            Password (Opsional)
+                        </label>
+
+                        <div class="flex gap-4 mb-3">
+                            <label
+                                class="flex items-center gap-2 cursor-pointer"
+                            >
+                                <input
+                                    type="radio"
+                                    v-model="form.password_option"
+                                    value=""
+                                    class="text-red-600 focus:ring-red-500"
+                                />
+                                <span class="text-sm text-gray-600"
+                                    >Tidak Ganti</span
+                                >
+                            </label>
+                            <label
+                                class="flex items-center gap-2 cursor-pointer"
+                            >
+                                <input
+                                    type="radio"
+                                    v-model="form.password_option"
+                                    value="random"
+                                    class="text-red-600 focus:ring-red-500"
+                                />
+                                <span class="text-sm text-gray-600"
+                                    >Default (guru123)</span
+                                >
+                            </label>
+                            <label
+                                class="flex items-center gap-2 cursor-pointer"
+                            >
+                                <input
+                                    type="radio"
+                                    v-model="form.password_option"
+                                    value="manual"
+                                    class="text-red-600 focus:ring-red-500"
+                                />
+                                <span class="text-sm text-gray-600"
+                                    >Input Manual</span
+                                >
+                            </label>
+                        </div>
+
+                        <div v-if="form.password_option === 'manual'">
+                            <input
+                                v-model="form.new_password"
+                                type="text"
+                                class="w-full rounded-lg border-gray-300 focus:ring-red-500"
+                                placeholder="Masukkan password baru..."
+                            />
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end gap-2 pt-4 border-t">
+                        <button
+                            type="button"
+                            @click="showEditModal = false"
+                            class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm font-medium"
+                        >
+                            Batal
+                        </button>
+                        <button
+                            type="submit"
+                            :disabled="form.processing"
+                            class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-bold disabled:opacity-50"
+                        >
+                            {{
+                                form.processing
+                                    ? "Menyimpan..."
+                                    : "Simpan Perubahan"
+                            }}
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </AuthenticatedLayout>
