@@ -43,12 +43,22 @@ const adminMenu = computed(() => [
         statLabel: "Total Kelas",
     },
     {
-        name: "Rekap Absensi",
-        description: "Laporan Detail Absensi Siswa dan Guru",
+        name: "Laporan Siswa",
+        description: "Rekap Kehadiran Peserta Didik",
         icon: CalendarDaysIcon,
-        route: route("admin.dashboard"), // Placeholder (Belum ada rute rekap admin)
+        // Passing parameter role='student'
+        route: route("admin.attendance.report", { role: "student" }),
         statValue: "Lihat",
-        statLabel: "Laporan",
+        statLabel: "Rekap",
+    },
+    {
+        name: "Laporan Guru",
+        description: "Rekap Kehadiran Pengajar",
+        icon: AcademicCapIcon,
+        // Passing parameter role='teacher'
+        route: route("admin.attendance.report", { role: "teacher" }),
+        statValue: "Lihat",
+        statLabel: "Rekap",
     },
     {
         name: "Generator QR Code",
@@ -65,6 +75,31 @@ const adminMenu = computed(() => [
         route: route("admin.settings.attendance"), // Pastikan rute ini ada atau ganti sementara
         statValue: "Atur",
         statLabel: "Sistem",
+    },
+    {
+        name: "Data Siswa",
+        description: "Input Siswa, Buat Akun Otomatis",
+        icon: UserGroupIcon, // Pastikan icon diimport
+        route: route("admin.students.index"), // Link ke halaman yang baru kita buat
+        statValue: "Kelola",
+        statLabel: "Action",
+    },
+    // Tambahkan item ini ke dalam array adminMenu:
+    {
+        name: "Jadwal Pelajaran",
+        description: "Plotting Guru, Mapel, dan Kelas",
+        icon: CalendarDaysIcon,
+        route: route("admin.schedules.index"),
+        statValue: "Atur",
+        statLabel: "Jadwal",
+    },
+    {
+        name: "Manajemen Guru", // Ganti nama menu
+        description: "Data Pengajar & Akun",
+        icon: UserGroupIcon,
+        route: route("admin.teachers.index"), // <--- Link ke index guru
+        statValue: props.stats.teachers,
+        statLabel: "Total Guru",
     },
 ]);
 </script>

@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo; // Tambahkan untuk relasi
+use App\Models\Student;
+use App\Models\Teacher;
 
 class User extends Authenticatable
 {
@@ -54,5 +56,17 @@ class User extends Authenticatable
     public function currentClass(): BelongsTo
     {
         return $this->belongsTo(Kelas::class, 'class_id');
+    }
+
+    // Relasi ke tabel STUDENTS (Biodata Siswa)
+    public function student()
+    {
+        return $this->hasOne(Student::class);
+    }
+
+    // Relasi ke tabel TEACHERS (Biodata Guru)
+    public function teacher()
+    {
+        return $this->hasOne(Teacher::class);
     }
 }
