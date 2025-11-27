@@ -9,9 +9,12 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Redirect; 
 use Illuminate\Support\Facades\DB; 
+use App\Traits\AttendanceTokenTrait;
 
 class AdminController extends Controller
 {
+    use AttendanceTokenTrait;
+
     // Halaman Dashboard Admin (Menu Utama & Statistik Overview)
     public function index()
     {
@@ -218,8 +221,8 @@ class AdminController extends Controller
     }
 
 
-    // ===============================================
-    // 5. LAPORAN ABSENSI (REPORT)
+// ===============================================
+    // 5. LAPORAN ABSENSI (DIPERBARUI)
     // ===============================================
 
     public function attendanceReport(Request $request)
@@ -227,39 +230,72 @@ class AdminController extends Controller
         $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
         $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
         $classId = $request->input('class_id');
+        
+        // TANGKAP ROLE (Default ke student jika tidak ada)
+        $targetRole = $request->input('role', 'student'); 
 
-        // Query Data Absensi dengan Filter
-        $query = \App\Models\Attendance::with(['user.student.kelas']) // Eager Load relasi
-                    ->whereBetween('date', [$startDate, $endDate]);
+        // Query Data Absensi
+        $query = \App\Models\Attendance::with(['user.student.kelas', 'user.teacher'])
+                    ->whereBetween('date', [$startDate, $endDate])
+                    ->whereHas('user', function($q) use ($targetRole) {
+                        $q->where('role', $targetRole); // <--- FILTER ROLE DISINI
+                    });
 
-        // Filter berdasarkan Kelas (jika dipilih)
-        if ($classId) {
+        // Filter Kelas (Hanya jika role = student)
+        if ($targetRole === 'student' && $classId) {
             $query->whereHas('user.student', function($q) use ($classId) {
                 $q->where('class_id', $classId);
             });
         }
 
         $attendances = $query->latest('date')->get();
-        $classes = Kelas::orderBy('name')->get();
+        $classes = Kelas::orderBy('name')->get(); // Data kelas tetap dikirim
 
-        // Jika permintaan adalah "Cetak" (Print Mode)
+        // Mode Cetak (Blade)
         if ($request->has('print')) {
             return view('print.attendance_report', [
                 'attendances' => $attendances,
                 'start_date' => $startDate,
                 'end_date' => $endDate,
-                'kelas_nama' => $classId ? Kelas::find($classId)->name : 'Semua Kelas'
+                'kelas_nama' => ($targetRole == 'student' && $classId) ? Kelas::find($classId)->name : 'Semua',
+                'role_label' => $targetRole == 'student' ? 'Siswa' : 'Guru'
             ]);
         }
 
+        // Mode Tampilan Web (Vue)
         return Inertia::render('Admin/Attendance/Report', [
             'attendances' => $attendances,
             'classes' => $classes,
             'filters' => [
                 'start_date' => $startDate,
                 'end_date' => $endDate,
-                'class_id' => $classId
+                'class_id' => $classId,
+                'role' => $targetRole, // Kirim info role ke frontend
             ]
         ]);
     }
+
+    // ===============================================
+    // 6. PENGATURAN QR CODE (GENERATOR)
+    // ===============================================
+
+    // Halaman Tampilan QR
+    public function qrGenerator()
+    {
+        // Generate token awal
+        $initialToken = $this->generateAttendanceToken(0);
+
+        return Inertia::render('Admin/Settings/QrGenerator', [
+            'initialToken' => $initialToken
+        ]);
+    }
+
+    // API Endpoint untuk Refresh Token (Dipanggil via AJAX/Fetch)
+    public function getQrToken()
+    {
+        $token = $this->generateAttendanceToken(0);
+        return response()->json(['token' => $token]);
+    }
+
+    
 }

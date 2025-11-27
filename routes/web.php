@@ -108,11 +108,14 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
         Route::delete('/{id}', [AdminController::class, 'destroySchedule'])->name('destroy');
     });
 
-    // 6. Placeholder Settings
-    Route::get('/settings/attendance', function() {})->name('settings.attendance');
-    Route::get('/settings/qr-generator', function() {})->name('settings.qr');
-   
+// 6. QR CODE GENERATOR (Real-time)
+    Route::get('/settings/qr-generator', [AdminController::class, 'qrGenerator'])->name('settings.qr');
     
+    // API untuk fetch token baru (Admin)
+    Route::get('/settings/get-qr-token', [AdminController::class, 'getQrToken'])->name('settings.get_qr');
+
+    // 7. Pengaturan Sistem (Placeholder dulu)
+    Route::get('/settings/attendance', function() { return Inertia::render('Admin/Settings/Attendance'); })->name('settings.attendance');
 });
 
 // =========================================================================

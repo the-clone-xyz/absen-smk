@@ -43,12 +43,22 @@ const adminMenu = computed(() => [
         statLabel: "Total Kelas",
     },
     {
-        name: "Rekap Absensi",
-        description: "Laporan Detail Absensi Siswa dan Guru",
+        name: "Laporan Siswa",
+        description: "Rekap Kehadiran Peserta Didik",
         icon: CalendarDaysIcon,
-        route: route("admin.attendance.report"), // Placeholder (Belum ada rute rekap admin)
+        // Passing parameter role='student'
+        route: route("admin.attendance.report", { role: "student" }),
         statValue: "Lihat",
-        statLabel: "Laporan",
+        statLabel: "Rekap",
+    },
+    {
+        name: "Laporan Guru",
+        description: "Rekap Kehadiran Pengajar",
+        icon: AcademicCapIcon,
+        // Passing parameter role='teacher'
+        route: route("admin.attendance.report", { role: "teacher" }),
+        statValue: "Lihat",
+        statLabel: "Rekap",
     },
     {
         name: "Generator QR Code",
