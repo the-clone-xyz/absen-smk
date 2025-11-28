@@ -4,17 +4,21 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Kelas extends Model
 {
     use HasFactory;
     
-    // Tambahkan baris ini agar Count() bekerja tanpa crash
+    // Pastikan nama tabel benar
+    protected $table = 'kelas';
+    
     protected $guarded = []; 
 
-    public function students(): HasMany
+    // PERBAIKAN RELASI DISINI:
+    public function students()
     {
-        return $this->hasMany(User::class, 'class_id');
+        // Sebelumnya mungkin: hasMany(User::class) -> SALAH
+        // Seharusnya: hasMany(Student::class) -> BENAR
+        return $this->hasMany(Student::class, 'class_id');
     }
 }

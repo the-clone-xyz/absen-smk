@@ -60,6 +60,13 @@ Route::middleware(['auth', 'verified', 'role:teacher'])->prefix('guru')->name('t
     Route::patch('/absensi/{id}/approve', [TeacherController::class, 'updateStatus'])->name('attendance.approve');
     Route::get('/qr-token', [TeacherController::class, 'getQrToken'])->name('qr.token'); 
     Route::get('/approval/izin', [TeacherController::class, 'showPending'])->name('approval.index');
+    // Jurnal Mengajar
+    Route::get('/kelas/{scheduleId}', [TeacherController::class, 'showClass'])->name('classroom.show');
+    Route::post('/jurnal', [TeacherController::class, 'storeJournal'])->name('journal.store');
+    Route::get('/class-qr-token/{scheduleId}', [TeacherController::class, 'getClassQrToken'])->name('classroom.qr_token');
+
+    // API Data Kelas Realtime (Polling)
+    Route::get('/class-data/{scheduleId}', [TeacherController::class, 'getClassData'])->name('classroom.data');
 
 });
 
@@ -123,10 +130,10 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
 // =========================================================================
 // ZONA UMUM (Profile)
 // =========================================================================
-Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.delete');
-});
+    Route::middleware('auth')->group(function () {
+        Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+        Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+        Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.delete');
+    });
 
 require __DIR__.'/auth.php';

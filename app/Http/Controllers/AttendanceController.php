@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Attendance;
+use App\Models\SystemSetting;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
@@ -11,131 +12,128 @@ use App\Traits\AttendanceTokenTrait;
 class AttendanceController extends Controller
 {
     use AttendanceTokenTrait;
-    // 1. Halaman Absen Masuk (Scan Wajah/QR)
+
+    // 1. Halaman Absen
     public function index()
     {
         return Inertia::render('Attendance/Index');
     }
 
-    // 2. Halaman Form Izin / Sakit
+    // 2. Halaman Izin
     public function izin()
     {
         return Inertia::render('Attendance/Izin');
     }
 
-    // 3. Proses Simpan Data (Logic Utama)
+    // 3. PROSES SIMPAN ABSEN (INTI SISTEM)
     public function store(Request $request)
     {
-        
-        // --- 0. CEK DUPLIKAT (ANTI SPAM) ---
-        // Kita cek dulu: Apakah user ini sudah punya data di tanggal hari ini?
-        $sudahAbsen = Attendance::where('user_id', Auth::id())
+        $user = Auth::user();
+
+        // --- A. CEK APAKAH SUDAH ABSEN HARI INI? ---
+        $sudahAbsen = Attendance::where('user_id', $user->id)
                         ->where('date', now()->toDateString())
                         ->first();
 
+        // PENGECUALIAN: Jika scan QR Kelas, kita izinkan scan lagi (karena bisa jadi absen mapel beda)
+        // Tapi untuk simplifikasi sistem ini: "1 Hari = 1 Absen Masuk".
+        // Jadi kalau sudah absen pagi, scan kelas hanya untuk validasi (tidak nambah data baru di tabel attendance)
+        // Nanti Guru akan melihat status "Hadir" dari data absen pagi tersebut.
+        
         if ($sudahAbsen) {
-            // Jika sudah ada, tolak dan kembalikan ke dashboard dengan pesan ERROR
+            // Jika User Scan QR Kelas -> Kita beri pesan sukses saja (Validasi kehadiran mapel)
+            if ($request->input('type') === 'qr' && str_starts_with($request->qr_code, 'CLASS:')) {
+                 return redirect()->route('dashboard')
+                    ->with('success', 'Anda sudah tercatat Hadir hari ini. Data sinkron ke Guru.');
+            }
+            
             return redirect()->route('dashboard')
                 ->with('error', 'Anda sudah melakukan presensi hari ini!');
         }
 
-        // --- SKENARIO 1: JIKA STATUSNYA IZIN / SAKIT ---
-        if ($request->status === 'Sakit' || $request->status === 'Izin') {
-            $request->validate([
-                'description' => 'required',
-                'photo' => 'required|image|max:10240', // 10MB
-            ]);
-
-            // Simpan Foto Bukti
-            $path = $request->file('photo')->store('photos', 'public');
-
-            // Simpan Data
-            Attendance::create([
-                'user_id' => Auth::id(),
-                'date' => now()->toDateString(),
-                'time_in' => now()->toTimeString(),
-                'status' => $request->status,
-                'description' => $request->description,
-                'approval_status' => 'pending',
-                'photo_path' => $path,
-                'latitude' => 0,
-                'longitude' => 0,
-            ]);
-
-            // FIX: Ganti 'message' jadi 'success' agar SweetAlert muncul
-            return redirect()->route('dashboard')->with('success', 'Pengajuan Izin Berhasil Dikirim!');
-        }
-
-
-        // --- SKENARIO 2 & 3: JIKA STATUSNYA HADIR (SCAN WAJAH / QR) ---
-       $type = $request->input('type', 'face');
+        // --- B. PERSIAPAN VARIABEL ---
+        $type = $request->input('type', 'face');
         $photoPath = null;
         $description = '';
-
+        
+        // --- C. LOGIKA QR CODE (KELAS & HARIAN) ---
         if ($type === 'qr') {
-            // === LOGIKA SCAN QR CODE ===
             $request->validate(['qr_code' => 'required']);
+            $qrString = $request->qr_code;
 
-            // Validasi Token QR
-            $validToken = "SMK-TAMAN-SISWA-2025"; 
+            // 1. Cek: Apakah ini QR KELAS? (Format: CLASS:ID:TOKEN)
+            if (str_starts_with($qrString, 'CLASS:')) {
+                $parts = explode(':', $qrString);
+                
+                // Validasi format string
+                if (count($parts) !== 3) {
+                    return back()->withErrors(['qr' => 'Format QR Code tidak dikenali.']);
+                }
 
-            if (! $this->isTokenValid($request->qr_code)) { // Manggil fungsi dari Trait
-                return redirect()->back()->withErrors(['qr' => 'QR Code Salah atau Kadaluarsa! Silakan minta Guru untuk Refresh.']);
+                $scheduleId = $parts[1];
+                $tokenHash  = $parts[2];
+
+                // Validasi Token menggunakan Trait (Context: SCH-ID)
+                if (! $this->isTokenValid($tokenHash, 'SCH-' . $scheduleId)) {
+                    return back()->withErrors(['qr' => 'QR Kelas Kadaluarsa! Minta Guru refresh layar.']);
+                }
+
+                $description = 'Hadir via QR Kelas (Jadwal ID: ' . $scheduleId . ')';
+            } 
+            // 2. Jika Bukan, Berarti QR HARIAN (Format: TOKEN_HASH saja)
+            else {
+                // Validasi Token Harian (Context Default)
+                if (! $this->isTokenValid($qrString)) {
+                    return back()->withErrors(['qr' => 'QR Code Salah atau Kadaluarsa!']);
+                }
+                $description = 'Hadir via QR Harian';
             }
 
-            $description = 'Hadir via Scan QR';
-            
+            // Simpan Foto (Opsional di mode QR)
             if ($request->hasFile('photo')) {
                 $photoPath = $request->file('photo')->store('photos', 'public');
             }
-
-        } else {
-            // === LOGIKA SCAN WAJAH (FACE + GPS) ===
+        } 
+        
+        // --- D. LOGIKA WAJAH / GPS ---
+        else {
             $request->validate([
                 'latitude' => 'required',
                 'longitude' => 'required',
-                'photo' => 'required|image|max:10240', // 10MB
+                'photo' => 'required|image|max:10240',
             ]);
 
-            // Koordinat Sekolah
-            $setting = \App\Models\SystemSetting::first();
+            // Ambil Setting Radius dari DB
+            $setting = SystemSetting::first();
+            if (!$setting) return back()->withErrors(['location' => 'Admin belum setting lokasi!']);
 
-            if (!$setting) {
-                return back()->withErrors(['location' => 'Pengaturan Lokasi Sekolah belum diatur oleh Admin!']);
-            }
+            $jarak = $this->hitungJarak($setting->latitude, $setting->longitude, $request->latitude, $request->longitude);
 
-            $latSekolah = $setting->latitude;
-            $longSekolah = $setting->longitude;
-            $jarakMaksimal = $setting->radius_limit;
-
-            $jarak = $this->hitungJarak($latSekolah, $longSekolah, $request->latitude, $request->longitude);
-
-            if ($jarak > $jarakMaksimal) {
-                 return redirect()->back()->withErrors(['location' => "Anda di luar jangkauan! Jarak: " . round($jarak) . "m. Maksimal: {$jarakMaksimal}m."]);
+            if ($jarak > $setting->radius_limit) {
+                 return redirect()->back()->withErrors(['location' => "Jarak kejauhan: " . round($jarak) . "m. (Max: {$setting->radius_limit}m)"]);
             }
 
             $description = 'Hadir via Wajah (GPS)';
             $photoPath = $request->file('photo')->store('photos', 'public');
         }
 
-        // Simpan Data Hadir
+        // --- E. SIMPAN KE DATABASE ---
         Attendance::create([
-            'user_id' => Auth::id(),
+            'user_id' => $user->id,
             'date' => now()->toDateString(),
             'time_in' => now()->toTimeString(),
             'status' => 'Hadir',
             'description' => $description,
-            'approval_status' => 'approved',
+            'approval_status' => 'approved', // Hadir langsung Approved
             'photo_path' => $photoPath,
             'latitude' => $request->latitude ?? 0,
             'longitude' => $request->longitude ?? 0,
         ]);
 
-        // FIX: Ganti 'message' jadi 'success' agar SweetAlert muncul
         return redirect()->route('dashboard')->with('success', 'Absensi Berhasil Tercatat!');
     }
 
-    // Fungsi Matematika Menghitung Jarak (Meter)
+    // Rumus Jarak
     private function hitungJarak($lat1, $lon1, $lat2, $lon2) {
         $earthRadius = 6371000; 
         $dLat = deg2rad($lat2 - $lat1);
@@ -145,16 +143,9 @@ class AttendanceController extends Controller
         return $earthRadius * $c;
     }
 
-    // Halaman Rekap/Riwayat
     public function rekap()
     {
-     // PERBAIKAN: Tambahkan 'where user_id'
-        $dataAbsensi = Attendance::where('user_id', Auth::id()) // <--- KUNCI FILTTERNYA
-                        ->latest() // Urutkan dari yang terbaru
-                        ->get();
-
-        return Inertia::render('Attendance/Rekap', [
-            'absensi' => $dataAbsensi
-        ]);
+        $dataAbsensi = Attendance::where('user_id', Auth::id())->latest()->get();
+        return Inertia::render('Attendance/Rekap', ['absensi' => $dataAbsensi]);
     }
 }
