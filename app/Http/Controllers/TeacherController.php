@@ -23,54 +23,63 @@ class TeacherController extends Controller
         $user = auth()->user();
         $teacher = $user->teacher;
 
-        // Cek apakah data guru ada
         if (!$teacher) {
-             // Bisa return error atau redirect jika perlu
+            // Handle error jika data guru belum lengkap
         }
 
-        // A. Ambil Jadwal Hari Ini
         Carbon::setLocale('id');
-        $hariIni = Carbon::now()->isoFormat('dddd'); // Senin, Selasa, dll.
+        $hariIni = Carbon::now()->isoFormat('dddd');
 
-        $jadwalMengajar = [];
-        
+        // 1. JADWAL HARI INI (Untuk Widget Kiri)
+        $jadwalHariIni = [];
         if ($teacher) {
-            $jadwalMengajar = Schedule::with(['class', 'subject'])
+            $jadwalHariIni = Schedule::with(['class', 'subject'])
                 ->where('teacher_id', $teacher->id)
                 ->where('day', $hariIni)
                 ->orderBy('start_time')
                 ->get()
                 ->map(function ($jadwal) {
-                    // Cek apakah jurnal sudah diisi?
-                    $isDone = Journal::where('schedule_id', $jadwal->id)
+                    $jurnal = Journal::where('schedule_id', $jadwal->id)
                                 ->where('date', now()->toDateString())
                                 ->exists();
-                    $jadwal->is_done = $isDone;
+                    $jadwal->is_done = $jurnal;
                     return $jadwal;
                 });
         }
 
-        // B. Data Absensi Harian (Global)
-        $absensiHariIni = Attendance::with('user')
+        // 2. JADWAL BULANAN (Untuk Kalender)
+        // Kita ambil semua jadwal unik guru ini (Hari & Mapel)
+        $jadwalBulanan = Schedule::with(['class', 'subject'])
+                            ->where('teacher_id', $teacher->id)
+                            ->get()
+                            ->groupBy('day'); // Kelompokkan per hari (Senin, Selasa, dst)
+
+
+        // 3. ABSENSI TERAKHIR (Dikelompokkan per Kelas)
+        // Ambil data absensi hari ini, urutkan berdasarkan Kelas -> Waktu
+        $absensiGrouped = Attendance::with(['user.student.kelas'])
                             ->whereDate('created_at', now()->toDateString())
                             ->latest()
-                            ->get();
+                            ->get()
+                            ->groupBy(function($item) {
+                                return $item->user->student->kelas->name ?? 'Lainnya';
+                            });
 
-        // C. Statistik
+        // 4. Statistik (Tetap)
         $stats = [
-            'hadir' => $absensiHariIni->where('status', 'Hadir')->count(),
-            'pending' => $absensiHariIni->where('approval_status', 'pending')->count(),
-            'total' => $absensiHariIni->count(),
+            'hadir' => Attendance::whereDate('created_at', now()->toDateString())->where('status', 'Hadir')->count(),
+            'pending' => Attendance::whereDate('created_at', now()->toDateString())->where('approval_status', 'pending')->count(),
+            'total' => Attendance::whereDate('created_at', now()->toDateString())->count(),
         ];
 
-        // D. QR Token Global (Untuk Dashboard)
         $currentQrToken = $this->generateAttendanceToken(0);
 
         return Inertia::render('Teacher/Dashboard', [
-            'absensi' => $absensiHariIni,
+            'absensiGrouped' => $absensiGrouped, // Data Baru (Grouped)
             'statistik' => $stats,
             'qrToken' => $currentQrToken,
-            'jadwal' => $jadwalMengajar,
+            'jadwal' => $jadwalHariIni,
+            'jadwalKalender' => $jadwalBulanan // Data Baru (Untuk Kalender)
         ]);
     }
 
