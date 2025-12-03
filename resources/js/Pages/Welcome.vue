@@ -1,280 +1,299 @@
 <script setup>
 import { Head, Link } from "@inertiajs/vue3";
+import {
+    AcademicCapIcon,
+    QrCodeIcon,
+    ClockIcon,
+    ShieldCheckIcon,
+    ArrowRightIcon,
+    Bars3Icon,
+    MapPinIcon,
+    DevicePhoneMobileIcon,
+    DocumentCheckIcon,
+    UserGroupIcon,
+} from "@heroicons/vue/24/outline";
+import { ref } from "vue";
 
+// MENERIMA DATA DARI CONTROLLER
 defineProps({
-    canLogin: Boolean, // Saya tambahkan ini buat jaga-jaga
+    canLogin: Boolean,
     canRegister: Boolean,
+    schoolName: String, // <--- Data Nama Sekolah Dinamis
 });
+
+const features = [
+    {
+        title: "Geofencing Area",
+        desc: "Siswa hanya bisa absen di dalam radius sekolah yang ditentukan.",
+        icon: MapPinIcon,
+    },
+    {
+        title: "Akses Mobile",
+        desc: "Aplikasi responsif yang dapat diakses melalui Smartphone & Tablet.",
+        icon: DevicePhoneMobileIcon,
+    },
+    {
+        title: "Laporan Otomatis",
+        desc: "Rekap kehadiran harian dan bulanan tergenerate secara otomatis.",
+        icon: DocumentCheckIcon,
+    },
+    {
+        title: "Multi-User",
+        desc: "Portal khusus untuk Siswa, Guru, dan Administrator Sekolah.",
+        icon: UserGroupIcon,
+    },
+];
 </script>
 
 <template>
-    <Head title="Sistem Absensi Tamansiswa" />
+    <Head title="Sistem Presensi Digital" />
 
     <div
-        class="min-h-screen bg-gray-50 font-sans selection:bg-green-700 selection:text-white"
+        class="min-h-screen bg-slate-50 font-sans selection:bg-emerald-500 selection:text-white relative overflow-x-hidden"
     >
+        <div class="absolute inset-0 z-0 pointer-events-none">
+            <div
+                class="absolute inset-0 bg-[linear-gradient(to_right,#10b9811a_1px,transparent_1px),linear-gradient(to_bottom,#10b9811a_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_110%)]"
+            ></div>
+
+            <div
+                class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-[500px] bg-emerald-300/20 blur-[100px] rounded-full"
+            ></div>
+        </div>
+
         <nav
-            class="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-green-100 shadow-[0_8px_30px_rgb(0,0,0,0.05)] transition"
+            class="fixed w-full z-50 top-0 transition-all duration-300 bg-white/70 backdrop-blur-lg border-b border-emerald-100"
         >
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between items-center h-16">
+                <div class="flex justify-between h-20">
                     <div class="flex items-center gap-3">
-                        <img
-                            src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Logo_Tamansiswa.svg/1200px-Logo_Tamansiswa.svg.png"
-                            alt="Logo Tamansiswa"
-                            class="h-10 w-auto drop-shadow-sm"
-                        />
-                        <div class="flex flex-col">
+                        <div
+                            class="w-10 h-10 bg-gradient-to-br from-emerald-500 to-green-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-emerald-500/30"
+                        >
+                            <AcademicCapIcon class="w-6 h-6" />
+                        </div>
+                        <div>
                             <span
-                                class="text-lg font-serif font-bold tracking-tight text-green-900 leading-none"
+                                class="block text-lg sm:text-xl font-extrabold text-slate-800 tracking-tight leading-none uppercase truncate max-w-[200px] sm:max-w-md"
                             >
-                                SMK TAMANSISWA
+                                {{ schoolName }}
                             </span>
                             <span
-                                class="text-xs text-green-600 font-medium tracking-wide"
+                                class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest"
+                                >Sistem Akademik Terpadu</span
                             >
-                                Luhur Budi, Berprestasi
-                            </span>
                         </div>
                     </div>
 
-                    <div class="flex items-center gap-4">
+                    <div class="hidden sm:flex sm:items-center sm:gap-4">
                         <Link
-                            v-if="$page.props.auth.user"
-                            :href="route('dashboard')"
-                            class="px-4 py-2 text-sm font-semibold text-green-800 bg-green-100 rounded-lg hover:bg-green-200 transition-all"
+                            :href="route('login')"
+                            class="text-sm font-semibold text-slate-600 hover:text-emerald-600 transition"
                         >
-                            Dashboard
+                            Masuk Guru / Siswa
                         </Link>
-
-                        <template v-else>
-                            <Link
-                                :href="route('login')"
-                                class="px-4 py-2 text-sm font-bold text-white bg-green-700 rounded-lg hover:bg-green-800 transition shadow-md shadow-green-700/30"
-                            >
-                                Login
-                            </Link>
-
-                            <Link
-                                v-if="canRegister"
-                                :href="route('register')"
-                                class="px-5 py-2 bg-white text-green-900 text-sm rounded-full font-semibold hover:bg-green-100 transition shadow"
-                            >
-                                Daftar Baru
-                            </Link>
-                        </template>
+                        <Link
+                            :href="route('login')"
+                            class="group relative px-6 py-2.5 bg-slate-900 text-white text-sm font-bold rounded-full shadow-xl hover:bg-emerald-600 transition-all duration-300 flex items-center gap-2 overflow-hidden"
+                        >
+                            <span class="relative z-10">Akses Portal</span>
+                            <ArrowRightIcon
+                                class="w-4 h-4 relative z-10 group-hover:translate-x-1 transition-transform"
+                            />
+                            <div
+                                class="absolute inset-0 bg-emerald-600 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300"
+                            ></div>
+                        </Link>
                     </div>
                 </div>
             </div>
         </nav>
 
-        <header
-            class="relative min-h-screen flex items-center justify-center pt-20 pb-12 overflow-hidden"
-        >
-            <img
-                class="absolute inset-0 w-full h-full object-cover object-center scale-105 blur-[2px]"
-                src="https://images.unsplash.com/photo-1562774053-701939374585?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80"
-                alt="Gedung Sekolah"
-            />
-
-            <div
-                class="absolute inset-0 bg-gradient-to-b from-green-900/80 via-green-900/60 to-green-800/90"
-            ></div>
-
-            <div
-                class="relative z-10 max-w-4xl mx-auto px-6 text-center animate-fadeIn"
-            >
-                <span
-                    class="inline-block py-2 px-6 rounded-full bg-white/10 border border-white/20 text-green-100 text-xs font-semibold tracking-widest mb-6 backdrop-blur-sm shadow-md"
+        <main class="relative z-10 pt-32 pb-16 lg:pt-48 lg:pb-32">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                <div
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-700 text-xs font-bold uppercase tracking-wider mb-8 animate-fade-in-up"
                 >
-                    SISTEM INFORMASI AKADEMIK TERPADU
-                </span>
+                    <span class="relative flex h-2 w-2">
+                        <span
+                            class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"
+                        ></span>
+                        <span
+                            class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"
+                        ></span>
+                    </span>
+                    Live Presensi System v2.0
+                </div>
 
                 <h1
-                    class="text-5xl md:text-6xl lg:text-7xl font-extrabold text-white leading-tight drop-shadow-xl font-serif"
+                    class="text-5xl md:text-7xl font-extrabold text-slate-900 tracking-tight mb-6 leading-tight"
                 >
-                    Absensi Digital <br />
+                    Absensi Digital <br class="hidden md:block" />
                     <span
-                        class="text-transparent bg-clip-text bg-gradient-to-r from-green-300 to-yellow-200"
+                        class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-500"
+                        >Berbasis Karakter</span
                     >
-                        Berbasis Karakter
-                    </span>
                 </h1>
 
                 <p
-                    class="mt-6 max-w-2xl mx-auto text-lg md:text-xl text-green-100 leading-relaxed opacity-90"
+                    class="mt-4 text-lg text-slate-600 max-w-2xl mx-auto mb-10 leading-relaxed"
                 >
-                    Presensi modern yang terintegrasi, akurat, cepat, dan
-                    transparan. Dirancang khusus untuk lingkungan Tamansiswa.
+                    Platform presensi modern yang mengintegrasikan
+                    <span class="font-bold text-slate-800">QR Code</span>,
+                    <span class="font-bold text-slate-800">Validasi Wajah</span
+                    >, dan
+                    <span class="font-bold text-slate-800">Geolokasi</span>
+                    untuk menciptakan kedisiplinan dan transparansi di
+                    lingkungan <b>{{ schoolName }}</b
+                    >.
                 </p>
 
                 <div
-                    class="mt-10 flex flex-col sm:flex-row gap-4 justify-center"
+                    class="flex flex-col sm:flex-row gap-4 justify-center items-center"
                 >
                     <Link
                         :href="route('login')"
-                        class="px-8 py-4 text-lg font-bold rounded-xl bg-white text-green-900 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all"
+                        class="w-full sm:w-auto px-8 py-4 bg-emerald-600 text-white rounded-xl font-bold shadow-lg shadow-emerald-500/30 hover:bg-emerald-700 hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2"
                     >
+                        <QrCodeIcon class="w-5 h-5" />
                         Mulai Absen Sekarang
                     </Link>
-
                     <a
                         href="#fitur"
-                        class="px-8 py-4 border-2 border-white/40 text-lg font-semibold rounded-xl text-white hover:bg-white/10 backdrop-blur-lg transition-all"
+                        class="w-full sm:w-auto px-8 py-4 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 hover:border-emerald-200 transition-all duration-300"
                     >
                         Pelajari Fitur
                     </a>
                 </div>
-            </div>
-        </header>
 
-        <section id="fitur" class="py-24 bg-white">
-            <div class="max-w-7xl mx-auto px-6">
-                <div class="lg:grid lg:grid-cols-2 lg:gap-20 items-center">
-                    <div class="relative mb-16 lg:mb-0">
+                <div class="mt-16 relative mx-auto max-w-4xl">
+                    <div
+                        class="absolute -inset-1 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl blur opacity-20 animate-pulse"
+                    ></div>
+                    <div
+                        class="relative bg-white rounded-2xl border border-slate-200 shadow-2xl p-2 md:p-4 grid grid-cols-1 md:grid-cols-3 gap-4"
+                    >
                         <div
-                            class="absolute -top-12 -left-12 w-44 h-44 bg-green-100 rounded-full opacity-50 blur-xl"
-                        ></div>
-                        <div
-                            class="absolute -bottom-12 -right-12 w-60 h-60 bg-yellow-50 rounded-full opacity-50 blur-xl"
-                        ></div>
-
-                        <img
-                            class="relative rounded-3xl shadow-2xl border-8 border-white"
-                            src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&w=800&q=80"
-                        />
-
-                        <div
-                            class="absolute -bottom-6 -left-6 bg-white p-5 rounded-2xl shadow-xl border-l-8 border-green-600 backdrop-blur-xl"
+                            class="bg-slate-50 p-6 rounded-xl text-left border border-slate-100"
                         >
-                            <p
-                                class="text-sm text-gray-500 uppercase font-medium tracking-wider"
+                            <div
+                                class="w-10 h-10 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center mb-4"
                             >
-                                Kehadiran
+                                <ClockIcon class="w-6 h-6" />
+                            </div>
+                            <h3 class="font-bold text-slate-800">
+                                Real-time Data
+                            </h3>
+                            <p class="text-sm text-slate-500 mt-1">
+                                Pemantauan kehadiran siswa & guru detik ini
+                                juga.
                             </p>
-                            <p class="text-xl font-extrabold text-gray-900">
-                                Realtime Monitoring
+                        </div>
+
+                        <div
+                            class="bg-gradient-to-b from-emerald-500 to-green-600 p-6 rounded-xl text-center text-white shadow-lg transform md:-translate-y-8 md:scale-110 transition hover:scale-115"
+                        >
+                            <div
+                                class="bg-white p-3 rounded-lg inline-block mb-4 shadow-sm"
+                            >
+                                <QrCodeIcon class="w-16 h-16 text-slate-800" />
+                            </div>
+                            <h3 class="font-bold text-lg">Scan & Go</h3>
+                            <p class="text-emerald-100 text-xs mt-2">
+                                Cukup 3 detik untuk mencatat kehadiran Anda.
+                            </p>
+                            <div
+                                class="mt-4 text-xs font-mono bg-emerald-700/50 py-1 px-3 rounded-full inline-block"
+                            >
+                                Secure Token Active
+                            </div>
+                        </div>
+
+                        <div
+                            class="bg-slate-50 p-6 rounded-xl text-left border border-slate-100"
+                        >
+                            <div
+                                class="w-10 h-10 bg-purple-100 text-purple-600 rounded-lg flex items-center justify-center mb-4"
+                            >
+                                <ShieldCheckIcon class="w-6 h-6" />
+                            </div>
+                            <h3 class="font-bold text-slate-800">
+                                Anti-Fake GPS
+                            </h3>
+                            <p class="text-sm text-slate-500 mt-1">
+                                Validasi lokasi akurat dengan radius sekolah.
                             </p>
                         </div>
                     </div>
+                </div>
+            </div>
+        </main>
 
-                    <div>
-                        <h2
-                            class="text-green-700 font-bold uppercase tracking-widest text-sm mb-4"
+        <section
+            id="fitur"
+            class="py-20 bg-white border-t border-slate-100 relative"
+        >
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center mb-16">
+                    <h2 class="text-3xl font-extrabold text-slate-900">
+                        Teknologi Pendidikan Terdepan
+                    </h2>
+                    <p class="text-slate-500 mt-4">
+                        Kami menggabungkan hardware dan software untuk kemudahan
+                        administrasi.
+                    </p>
+                </div>
+
+                <div
+                    class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8"
+                >
+                    <div
+                        v-for="(item, index) in features"
+                        :key="index"
+                        class="group p-6 rounded-2xl bg-slate-50 hover:bg-emerald-50 border border-slate-100 hover:border-emerald-200 transition-all duration-300"
+                    >
+                        <div
+                            class="w-12 h-12 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"
                         >
-                            Keunggulan Sistem
-                        </h2>
-
-                        <h3
-                            class="text-4xl font-serif font-bold text-gray-900 mb-8 leading-tight"
-                        >
-                            Teknologi Presensi Modern<br />
-                            Untuk Sekolah Berkarakter
-                        </h3>
-
-                        <p class="text-lg text-gray-600 mb-12">
-                            Mengintegrasikan nilai luhur Tamansiswa dengan
-                            inovasi teknologi agar tercipta suasana sekolah yang
-                            disiplin dan harmonis.
-                        </p>
-
-                        <div class="space-y-10">
-                            <div class="flex items-start gap-4 group">
-                                <div
-                                    class="h-14 w-14 flex items-center justify-center rounded-2xl bg-green-700 text-white text-2xl shadow-lg group-hover:scale-110 transition"
-                                >
-                                    🌍
-                                </div>
-                                <div>
-                                    <h4
-                                        class="text-xl font-bold text-gray-900 group-hover:text-green-700 transition"
-                                    >
-                                        Validasi Geolocation
-                                    </h4>
-                                    <p class="mt-3 text-gray-500">
-                                        Presensi hanya dapat dilakukan pada
-                                        radius tertentu di lingkungan sekolah.
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div class="flex items-start gap-4 group">
-                                <div
-                                    class="h-14 w-14 flex items-center justify-center rounded-2xl bg-green-700 text-white text-2xl shadow-lg group-hover:scale-110 transition"
-                                >
-                                    📷
-                                </div>
-                                <div>
-                                    <h4
-                                        class="text-xl font-bold text-gray-900 group-hover:text-green-700 transition"
-                                    >
-                                        Autentikasi Visual
-                                    </h4>
-                                    <p class="mt-3 text-gray-500">
-                                        Selfie otomatis memastikan kehadiran
-                                        yang valid dan mencegah titip absen.
-                                    </p>
-                                </div>
-                            </div>
+                            <component
+                                :is="item.icon"
+                                class="w-6 h-6 text-emerald-600"
+                            />
                         </div>
+                        <h3 class="font-bold text-slate-800 mb-2">
+                            {{ item.title }}
+                        </h3>
+                        <p class="text-sm text-slate-500 leading-relaxed">
+                            {{ item.desc }}
+                        </p>
                     </div>
                 </div>
             </div>
         </section>
 
-        <footer class="bg-green-900 text-white pt-12 pb-8 mt-32 relative z-10">
-            <div
-                class="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-8 mb-8 border-b border-green-800 pb-8"
-            >
-                <div>
-                    <div class="flex items-center gap-3 mb-4">
-                        <img
-                            src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Logo_Tamansiswa.svg/1200px-Logo_Tamansiswa.svg.png"
-                            class="h-12 w-auto"
-                        />
-                        <span class="text-xl font-serif font-bold">
-                            SMK Tamansiswa
-                        </span>
-                    </div>
-                    <p class="text-green-200">
-                        Mencetak generasi berkarakter, disiplin, dan mandiri.
-                    </p>
-                </div>
-
-                <div>
-                    <h4 class="text-lg font-bold mb-4">Tautan Cepat</h4>
-                    <ul class="space-y-2 text-green-200">
-                        <li>
-                            <a href="/" class="hover:text-white"
-                                >Website Sekolah</a
-                            >
-                        </li>
-                        <li>
-                            <a href="/" class="hover:text-white">Portal Guru</a>
-                        </li>
-                        <li>
-                            <a href="/" class="hover:text-white"
-                                >Jadwal Pelajaran</a
-                            >
-                        </li>
-                    </ul>
-                </div>
-
-                <div>
-                    <h4 class="text-lg font-bold mb-4">Kontak</h4>
-                    <p class="text-green-200">📍 Jl. Tamansiswa No. 123</p>
-                    <p class="text-green-200">📞 (021) 1234-5678</p>
-                </div>
-            </div>
-
-            <div
-                class="max-w-7xl mx-auto px-6 text-center md:text-left flex flex-col md:flex-row justify-between text-green-300/80"
-            >
-                <p>
-                    &copy; {{ new Date().getFullYear() }} Tim IT SMK Tamansiswa.
-                </p>
-                <p>Dikembangkan dengan Laravel + Vue.js</p>
-            </div>
+        <footer class="py-8 bg-white border-t border-slate-200 text-center">
+            <p class="text-slate-500 text-sm">
+                &copy; 2025
+                <span class="font-bold text-emerald-700">{{ schoolName }}</span
+                >. All rights reserved.
+            </p>
         </footer>
     </div>
 </template>
+
+<style scoped>
+/* Animasi Halus */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+.animate-fade-in-up {
+    animation: fadeInUp 0.8s ease-out;
+}
+</style>

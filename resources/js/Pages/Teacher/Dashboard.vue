@@ -17,6 +17,7 @@ import {
     ChevronRightIcon,
     ArrowPathIcon,
     XMarkIcon,
+    CursorArrowRaysIcon,
 } from "@heroicons/vue/24/solid";
 
 const props = defineProps({
@@ -29,7 +30,7 @@ const props = defineProps({
 
 // State
 const showQRModal = ref(false);
-const currentQrToken = ref(props.qrToken);
+const currentQrToken = ref("");
 const timeLeft = ref(15);
 let intervalId = null;
 let countdownInterval = null;
@@ -296,7 +297,6 @@ onUnmounted(() => {
                                 Scan QR Code di meja piket/admin untuk mencatat
                                 kehadiran Anda.
                             </p>
-
                             <Link
                                 :href="route('attendance.index')"
                                 class="relative z-10 inline-flex items-center gap-2 bg-white text-green-800 px-8 py-3 rounded-xl font-bold shadow-md hover:bg-green-50 transition transform active:scale-95 w-full justify-center"
@@ -577,47 +577,95 @@ onUnmounted(() => {
                         class="absolute top-0 left-0 w-full h-1.5 bg-slate-800"
                     >
                         <div
-                            class="h-full bg-blue-500 transition-all duration-1000 ease-linear"
+                            class="h-full bg-blue-500 transition-all duration-1000 ease-linear box-shadow-glow"
                             :style="`width: ${(timeLeft / 15) * 100}%`"
                         ></div>
                     </div>
+
                     <div
-                        class="bg-white p-4 rounded-2xl shadow-2xl relative z-10"
+                        class="bg-white p-4 rounded-2xl shadow-2xl relative z-10 min-h-[260px] flex items-center justify-center"
                     >
+                        <div
+                            v-if="!currentQrToken"
+                            class="text-slate-400 flex flex-col items-center animate-pulse"
+                        >
+                            <ArrowPathIcon
+                                class="w-10 h-10 animate-spin mb-2"
+                            />
+                            <span class="text-xs">Memuat Token...</span>
+                        </div>
                         <QrcodeVue
+                            v-else
                             :value="currentQrToken"
                             :size="240"
                             level="H"
                         />
                     </div>
+
                     <p
-                        class="text-blue-200/60 text-[10px] mt-6 font-mono tracking-[0.3em] uppercase"
+                        class="text-blue-200/60 text-[10px] mt-6 font-mono tracking-[0.3em] uppercase flex items-center gap-2"
                     >
-                        Secure Token
+                        <span
+                            class="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"
+                        ></span>
+                        Secure Daily Token
+                    </p>
+
+                    <p
+                        class="text-[9px] text-slate-600 mt-2 font-mono break-all max-w-[200px] text-center"
+                    >
+                        {{ currentQrToken }}
                     </p>
                 </div>
+
                 <div
                     class="md:w-1/2 p-10 flex flex-col justify-center bg-white"
                 >
                     <div class="mb-auto">
                         <span
                             class="text-[10px] font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full uppercase tracking-wider border border-blue-100"
-                            >QR Harian</span
                         >
+                            Absensi Harian
+                        </span>
                         <h3
                             class="text-3xl font-extrabold text-gray-900 mt-4 mb-2"
                         >
-                            Scan Kode
+                            Scan Kehadiran
                         </h3>
-                        <p class="text-gray-500 text-sm">
-                            Kode ini untuk absensi umum/harian.
+                        <p class="text-gray-500 text-sm leading-relaxed">
+                            Siswa melakukan scan pada kode ini untuk mencatat
+                            kehadiran harian (masuk sekolah).
                         </p>
                     </div>
+
+                    <div class="space-y-4 mb-8">
+                        <div
+                            class="flex items-start gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100"
+                        >
+                            <div
+                                class="bg-white p-2 rounded-lg text-gray-600 shadow-sm"
+                            >
+                                <CursorArrowRaysIcon class="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h5 class="font-bold text-gray-800 text-sm">
+                                    Petunjuk
+                                </h5>
+                                <p
+                                    class="text-xs text-gray-500 leading-relaxed mt-1"
+                                >
+                                    Pastikan siswa menggunakan menu
+                                    <b>"Scan QR Code"</b> di aplikasi mereka.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
                     <button
                         @click="toggleQrModal(false)"
-                        class="w-full py-3.5 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition shadow-lg"
+                        class="w-full py-3.5 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition shadow-lg flex items-center justify-center gap-2"
                     >
-                        Tutup
+                        <XMarkIcon class="w-4 h-4" /> Tutup Layar
                     </button>
                 </div>
             </div>
