@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Models\SystemSetting;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use Illuminate\Http\RedirectResponse;
@@ -15,9 +16,12 @@ class AuthenticatedSessionController extends Controller
 {
     public function create(): Response
     {
+        $setting = SystemSetting::first();
+        $schoolName = $setting ? $setting->school_name : 'SMK TAMANSISWA';
         return Inertia::render('Auth/Login', [
             'canResetPassword' => Route::has('password.request'),
             'status' => session('status'),
+            'schoolName' => $schoolName,
         ]);
     }
 
