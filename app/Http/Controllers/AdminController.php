@@ -18,11 +18,26 @@ class AdminController extends Controller
     // Halaman Dashboard Admin (Menu Utama & Statistik Overview)
     public function index()
     {
-        // Panggilan ke Model sekarang akan berhasil
+        // 1. Statistik Utama
         $totalStudents = User::where('role', 'student')->count();
         $totalTeachers = User::where('role', 'teacher')->count();
         $totalClasses = Kelas::count();
         $totalSubjects = Subject::count();
+
+        // 2. Data Grafik Kehadiran (6 Bulan Terakhir)
+        $chartData = [];
+        $months = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $date = now()->subMonths($i);
+            $months[] = $date->isoFormat('MMM'); // Jan, Feb
+            
+            // Hitung jumlah hadir di bulan tersebut
+            $count = \App\Models\Attendance::where('status', 'Hadir')
+                        ->whereYear('date', $date->year)
+                        ->whereMonth('date', $date->month)
+                        ->count();
+            $chartData[] = $count;
+        }
         
         return Inertia::render('Admin/Dashboard', [
             'stats' => [
@@ -31,6 +46,10 @@ class AdminController extends Controller
                 'classes' => $totalClasses,
                 'subjects' => $totalSubjects,
             ],
+            'chart' => [
+                'labels' => $months,
+                'data' => $chartData
+            ]
         ]);
     }
 
@@ -297,5 +316,44 @@ class AdminController extends Controller
         return response()->json(['token' => $token]);
     }
 
+
+    // ===============================================
+    // 7. PENGATURAN SISTEM (SYSTEM SETTINGS)
+    // ===============================================
+
+    // Tampilkan Halaman Pengaturan
+    public function attendanceSettings()
+    {
+        // Ambil data pengaturan pertama (karena cuma ada 1 baris)
+        $setting = \App\Models\SystemSetting::first();
+
+        return Inertia::render('Admin/Settings/Attendance', [
+            'setting' => $setting
+        ]);
+    }
+
+    // Simpan Perubahan Pengaturan
+    public function updateSettings(Request $request)
+    {
+        $request->validate([
+            'school_name' => 'required|string',
+            'latitude' => 'required|numeric',
+            'longitude' => 'required|numeric',
+            'radius_limit' => 'required|integer',
+            'clock_in_time' => 'required',
+            'clock_out_time' => 'required',
+        ]);
+
+        $setting = \App\Models\SystemSetting::first();
+        
+        // Jika belum ada data, buat baru. Jika ada, update.
+        if (!$setting) {
+            \App\Models\SystemSetting::create($request->all());
+        } else {
+            $setting->update($request->all());
+        }
+
+        return back()->with('success', 'Pengaturan sistem berhasil diperbarui!');
+    }
     
 }

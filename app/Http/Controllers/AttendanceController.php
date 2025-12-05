@@ -98,15 +98,20 @@ class AttendanceController extends Controller
             ]);
 
             // Koordinat Sekolah
-            $latSekolah = 3.578912; // Koordinat Anda
-            $longSekolah = 98.675431;
-            
-            $jarakMaksimal = 50; // Radius meter
+            $setting = \App\Models\SystemSetting::first();
+
+            if (!$setting) {
+                return back()->withErrors(['location' => 'Pengaturan Lokasi Sekolah belum diatur oleh Admin!']);
+            }
+
+            $latSekolah = $setting->latitude;
+            $longSekolah = $setting->longitude;
+            $jarakMaksimal = $setting->radius_limit;
 
             $jarak = $this->hitungJarak($latSekolah, $longSekolah, $request->latitude, $request->longitude);
 
             if ($jarak > $jarakMaksimal) {
-                return redirect()->back()->withErrors(['location' => 'Anda di luar jangkauan! Jarak: ' . round($jarak) . 'm.']);
+                 return redirect()->back()->withErrors(['location' => "Anda di luar jangkauan! Jarak: " . round($jarak) . "m. Maksimal: {$jarakMaksimal}m."]);
             }
 
             $description = 'Hadir via Wajah (GPS)';

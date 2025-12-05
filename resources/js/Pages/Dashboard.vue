@@ -116,23 +116,41 @@ const isToday = (date) => {
 
     <AuthenticatedLayout>
         <template #header>
-            <div class="flex justify-between items-center">
-                <div>
-                    <h2
-                        class="font-bold text-2xl text-green-900 leading-tight font-serif"
+            <div
+                class="flex flex-col md:flex-row justify-between items-center gap-4"
+            >
+                <div class="flex items-center gap-3">
+                    <div
+                        class="p-2 bg-blue-100 rounded-xl text-blue-600 shadow-sm"
                     >
-                        {{ greeting }}
-                    </h2>
-                    <p class="text-sm text-gray-500 flex items-center gap-1">
-                        <UserIcon class="w-3 h-3" /> {{ user.name }}
-                    </p>
+                        <AcademicCapIcon class="w-8 h-8" />
+                    </div>
+                    <div>
+                        <h2
+                            class="font-extrabold text-2xl text-blue-900 leading-none tracking-tight"
+                        >
+                            Panel Guru
+                        </h2>
+                        <p class="text-sm text-gray-500 mt-1">
+                            Kelola Absensi & Aktivitas Kelas
+                        </p>
+                    </div>
                 </div>
-                <div class="text-right">
-                    <span
-                        class="text-xs font-bold bg-green-100 text-green-700 px-3 py-1 rounded-full border border-green-200 shadow-sm"
+
+                <div class="flex gap-3">
+                    <Link
+                        :href="route('attendance.index')"
+                        class="bg-white text-blue-700 border border-blue-200 px-4 py-2 rounded-lg hover:bg-blue-50 flex items-center gap-2 text-sm font-bold shadow-sm transition"
                     >
-                        Siswa Aktif
-                    </span>
+                        <CameraIcon class="w-5 h-5" /> Saya Mau Absen
+                    </Link>
+
+                    <button
+                        @click="showQRModal = true"
+                        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2 text-sm font-bold shadow-md transition hover:shadow-lg hover:-translate-y-0.5"
+                    >
+                        <QrCodeIcon class="w-5 h-5" /> Tampilkan QR Kelas
+                    </button>
                 </div>
             </div>
         </template>

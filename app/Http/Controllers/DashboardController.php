@@ -11,12 +11,14 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $userId = Auth::id();
+        $user = Auth::user();
+        $userId = $user->id;
 
-        // Hitung Data dari Database
+        // 1. Statistik Total
         $hadir = Attendance::where('user_id', $userId)->where('status', 'Hadir')->count();
         $sakit = Attendance::where('user_id', $userId)->where('status', 'Sakit')->count();
         $izin  = Attendance::where('user_id', $userId)->where('status', 'Izin')->count();
+        $totalIzinSakit = $sakit + $izin;
         
         // Gabungkan Sakit & Izin untuk statistik sederhana
         $totalIzinSakit = $sakit + $izin;
@@ -30,4 +32,6 @@ class DashboardController extends Controller
             ]
         ]);
     }
+
+    
 }
