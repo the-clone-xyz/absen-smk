@@ -13,24 +13,26 @@ import {
     CheckCircleIcon,
 } from "@heroicons/vue/24/solid";
 
-// --- KONFIGURASI LOKASI SEKOLAH ---
-const SCHOOL_LAT = 3.578912;
-const SCHOOL_LNG = 98.675431;
-const MAX_RADIUS_METERS = 50;
+// --- PROPS DARI CONTROLLER ---
+const props = defineProps({
+    schoolSettings: Object, // { lat, lng, radius }
+});
 
 // State
 const mode = ref("face");
 const coordinates = ref(null);
 const currentDistance = ref(0);
+const accuracy = ref(0); // Tingkat akurasi GPS (meter)
 const locationError = ref(null);
 const videoRef = ref(null);
 const photoPreview = ref(null);
 const qrResult = ref(null);
 const scannerError = ref(null);
 
-// VARIABLE UNTUK MENYIMPAN STREAM KAMERA (PENTING UNTUK STOP)
-let html5QrCode = null; // Instance QR
-let currentStream = null; // Instance Wajah
+// VARIABLE STREAM & GPS
+let html5QrCode = null;
+let currentStream = null;
+let geoWatcherId = null; // ID untuk pemantau GPS
 
 const form = useForm({
     type: "face",
@@ -40,28 +42,19 @@ const form = useForm({
     qr_code: "",
 });
 
-// --- FUNGSI STOP KAMERA (KILL SWITCH) ---
 const stopAllCameras = async () => {
-    // 1. Matikan Kamera Wajah
     if (currentStream) {
         currentStream.getTracks().forEach((track) => track.stop());
         currentStream = null;
     }
-
-    // 2. Matikan Kamera QR
     if (html5QrCode) {
         try {
-            if (html5QrCode.isScanning) {
-                await html5QrCode.stop();
-            }
+            if (html5QrCode.isScanning) await html5QrCode.stop();
             html5QrCode.clear();
-        } catch (err) {
-            // Ignore error jika sudah stop
-        }
+        } catch (err) {}
     }
 };
 
-// Rumus Jarak
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
     const R = 6371e3;
     const φ1 = (lat1 * Math.PI) / 180;
@@ -75,43 +68,75 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
     return Math.round(R * c);
 };
 
-// Ambil Lokasi
-const getLocation = () => {
+// --- REALTIME TRACKING ---
+const startLocationTracking = () => {
     if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
+        // Hapus watcher lama jika ada
+        if (geoWatcherId) navigator.geolocation.clearWatch(geoWatcherId);
+
+        locationError.value = "Sedang mencari satelit GPS...";
+
+        // Gunakan watchPosition agar lokasi terus di-update real-time
+        geoWatcherId = navigator.geolocation.watchPosition(
             (position) => {
+                locationError.value = null; // Reset error jika berhasil
                 coordinates.value = position.coords;
+                accuracy.value = Math.round(position.coords.accuracy);
+
                 form.latitude = position.coords.latitude;
                 form.longitude = position.coords.longitude;
-                currentDistance.value = calculateDistance(
-                    position.coords.latitude,
-                    position.coords.longitude,
-                    SCHOOL_LAT,
-                    SCHOOL_LNG
-                );
+
+                // Hitung Jarak Realtime
+                if (props.schoolSettings) {
+                    currentDistance.value = calculateDistance(
+                        position.coords.latitude,
+                        position.coords.longitude,
+                        props.schoolSettings.lat,
+                        props.schoolSettings.lng
+                    );
+                }
             },
-            (error) => (locationError.value = "GPS Wajib aktif!"),
-            { enableHighAccuracy: true }
+            (error) => {
+                console.error(error);
+                switch (error.code) {
+                    case error.PERMISSION_DENIED:
+                        locationError.value = "Izin lokasi ditolak browser.";
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        locationError.value = "Sinyal GPS tidak ditemukan.";
+                        break;
+                    case error.TIMEOUT:
+                        locationError.value = "Waktu habis mencari sinyal.";
+                        break;
+                    default:
+                        locationError.value = "Gagal mengambil lokasi.";
+                }
+            },
+            // Setting High Accuracy
+            {
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 0,
+            }
         );
+    } else {
+        locationError.value = "Browser tidak mendukung GPS.";
     }
 };
 
-const isWithinRadius = computed(
-    () => currentDistance.value <= MAX_RADIUS_METERS
-);
+const isWithinRadius = computed(() => {
+    const maxRadius = props.schoolSettings?.radius || 50;
+    return currentDistance.value <= maxRadius;
+});
 
-// Kamera Selfie (Wajah)
 const startCamera = async () => {
     if (mode.value !== "face") return;
-
-    // Pastikan kamera lama mati dulu
     await stopAllCameras();
-
     try {
         const stream = await navigator.mediaDevices.getUserMedia({
             video: true,
         });
-        currentStream = stream; // SIMPAN STREAM KE VARIABLE
+        currentStream = stream;
         if (videoRef.value) videoRef.value.srcObject = stream;
     } catch (err) {
         console.error("Gagal akses kamera", err);
@@ -127,25 +152,19 @@ const takePhoto = () => {
         const file = new File([blob], "selfie.jpg", { type: "image/jpeg" });
         form.photo = file;
         photoPreview.value = URL.createObjectURL(blob);
-
-        // Optional: Matikan kamera setelah foto diambil biar hemat baterai
-        // stopAllCameras();
     }, "image/jpeg");
 };
 
-// QR Scanner
 const startQRScanner = async () => {
     scannerError.value = null;
-    await stopAllCameras(); // Matikan kamera lain dulu
+    await stopAllCameras();
     await nextTick();
-
     html5QrCode = new Html5Qrcode("reader");
     const config = {
         fps: 10,
         qrbox: { width: 250, height: 250 },
         aspectRatio: 1.0,
     };
-
     html5QrCode
         .start(
             { facingMode: "environment" },
@@ -153,7 +172,7 @@ const startQRScanner = async () => {
             onScanSuccess,
             onScanFailure
         )
-        .catch((err) => {
+        .catch(() => {
             html5QrCode.start(
                 { facingMode: "user" },
                 config,
@@ -164,28 +183,27 @@ const startQRScanner = async () => {
 };
 
 const onScanSuccess = (decodedText) => {
-    stopAllCameras(); // MATIKAN KAMERA SEGERA SETELAH SCAN
+    stopAllCameras();
     qrResult.value = decodedText;
     form.qr_code = decodedText;
     submitAbsen();
 };
 
-const onScanFailure = (error) => {};
+const onScanFailure = () => {};
 
-// Ganti Tab (Mode)
 const switchMode = async (newMode) => {
     mode.value = newMode;
     form.type = newMode;
     photoPreview.value = null;
     qrResult.value = null;
     form.clearErrors();
-
-    await stopAllCameras(); // MATIKAN SEMUA KAMERA DULU
+    await stopAllCameras();
 
     if (newMode === "face") {
-        getLocation();
+        startLocationTracking(); // Nyalakan GPS lagi
         setTimeout(startCamera, 500);
     } else {
+        if (geoWatcherId) navigator.geolocation.clearWatch(geoWatcherId); // Matikan GPS saat mode QR (hemat batre)
         startQRScanner();
     }
 };
@@ -193,23 +211,21 @@ const switchMode = async (newMode) => {
 const submitAbsen = () => {
     form.post(route("attendance.store"), {
         forceFormData: true,
-        onSuccess: () => {
-            stopAllCameras(); // Pastikan mati jika sukses redirect
-        },
+        onSuccess: () => stopAllCameras(),
         onError: () => {
-            if (mode.value === "qr") startQRScanner(); // Nyalakan lagi kalau gagal
+            if (mode.value === "qr") startQRScanner();
         },
     });
 };
 
 onMounted(() => {
-    getLocation();
+    startLocationTracking();
     startCamera();
 });
 
-// --- PENTING: MATIKAN SAAT PINDAH HALAMAN ---
 onBeforeUnmount(() => {
     stopAllCameras();
+    if (geoWatcherId) navigator.geolocation.clearWatch(geoWatcherId);
 });
 </script>
 
@@ -270,14 +286,16 @@ onBeforeUnmount(() => {
                         </div>
 
                         <div
-                            class="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-md bg-black/40 border border-white/20 text-white text-sm font-medium z-20"
+                            class="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-md bg-black/40 border border-white/20 text-white text-sm font-medium z-20 whitespace-nowrap"
                         >
                             <MapPinIcon class="w-4 h-4 text-yellow-400" />
                             <span v-if="coordinates"
-                                >Lokasi: {{ currentDistance }}m</span
+                                >Jarak: {{ currentDistance }}m (±{{
+                                    accuracy
+                                }}m)</span
                             >
                             <span v-else class="animate-pulse"
-                                >Mencari GPS...</span
+                                >Mencari Satelit...</span
                             >
                         </div>
                     </div>
@@ -287,30 +305,6 @@ onBeforeUnmount(() => {
                         class="absolute inset-0 w-full h-full flex flex-col items-center justify-center"
                     >
                         <div id="reader" class="w-full h-full bg-black"></div>
-
-                        <div
-                            class="absolute inset-0 pointer-events-none flex items-center justify-center"
-                        >
-                            <div
-                                class="w-64 h-64 border-2 border-green-500 rounded-2xl relative shadow-[0_0_100px_rgba(34,197,94,0.3)]"
-                            >
-                                <div
-                                    class="absolute top-0 left-0 w-full h-1 bg-green-400 shadow-[0_0_15px_#4ade80] animate-scan"
-                                ></div>
-                                <div
-                                    class="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-white -mt-1 -ml-1"
-                                ></div>
-                                <div
-                                    class="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-white -mt-1 -mr-1"
-                                ></div>
-                                <div
-                                    class="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-white -mb-1 -ml-1"
-                                ></div>
-                                <div
-                                    class="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-white -mb-1 -mr-1"
-                                ></div>
-                            </div>
-                        </div>
                         <p
                             class="absolute bottom-10 text-white/70 text-sm z-20 bg-black/30 px-3 py-1 rounded-full"
                         >
@@ -354,21 +348,25 @@ onBeforeUnmount(() => {
                             <h3 class="text-2xl font-bold text-gray-800">
                                 {{
                                     mode === "face"
-                                        ? "Verifikasi Lokasi & Wajah"
+                                        ? "Verifikasi Lokasi"
                                         : "Scan Kode QR"
                                 }}
                             </h3>
                             <p class="text-gray-500 text-sm mt-1">
                                 {{
                                     mode === "face"
-                                        ? "Pastikan Anda berada di area sekolah dan wajah terlihat jelas."
-                                        : "Scan kode QR yang diberikan oleh Guru atau Admin."
+                                        ? "Sistem sedang memastikan Anda di sekolah."
+                                        : "Scan kode QR dari Admin."
                                 }}
                             </p>
                         </div>
 
                         <div
-                            v-if="form.errors.location || form.errors.qr"
+                            v-if="
+                                form.errors.location ||
+                                form.errors.qr ||
+                                locationError
+                            "
                             class="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg animate-pulse"
                         >
                             <div
@@ -378,7 +376,11 @@ onBeforeUnmount(() => {
                                 Gagal Absen
                             </div>
                             <p class="text-red-600 text-xs mt-1">
-                                {{ form.errors.location || form.errors.qr }}
+                                {{
+                                    form.errors.location ||
+                                    form.errors.qr ||
+                                    locationError
+                                }}
                             </p>
                         </div>
 
@@ -389,15 +391,21 @@ onBeforeUnmount(() => {
                             <div class="flex justify-between items-center mb-2">
                                 <span
                                     class="text-xs font-bold text-gray-500 uppercase"
-                                    >Status Jarak</span
+                                    >Akurasi GPS</span
                                 >
                                 <span
                                     class="text-xs font-mono bg-white px-2 py-1 rounded border"
-                                    >{{ currentDistance }} Meter</span
+                                    :class="
+                                        accuracy > 20
+                                            ? 'text-red-600'
+                                            : 'text-green-600'
+                                    "
+                                    >±{{ accuracy }}m</span
                                 >
                             </div>
+
                             <div
-                                class="w-full bg-gray-200 rounded-full h-2.5 mb-2"
+                                class="w-full bg-gray-200 rounded-full h-2.5 mb-2 overflow-hidden"
                             >
                                 <div
                                     class="h-2.5 rounded-full transition-all duration-500"
@@ -408,12 +416,15 @@ onBeforeUnmount(() => {
                                     "
                                     :style="`width: ${Math.min(
                                         (currentDistance /
-                                            (MAX_RADIUS_METERS * 2)) *
+                                            ((props.schoolSettings?.radius ||
+                                                50) *
+                                                2)) *
                                             100,
                                         100
                                     )}%`"
                                 ></div>
                             </div>
+
                             <p
                                 class="text-xs"
                                 :class="
@@ -424,8 +435,10 @@ onBeforeUnmount(() => {
                             >
                                 {{
                                     isWithinRadius
-                                        ? "✅ Dalam Radius Aman"
-                                        : `⛔ Terlalu Jauh (Max ${MAX_RADIUS_METERS}m)`
+                                        ? "✅ Lokasi Sesuai"
+                                        : `⛔ Kejauhan: ${currentDistance}m (Max ${
+                                              props.schoolSettings?.radius || 50
+                                          }m)`
                                 }}
                             </p>
                         </div>
@@ -466,39 +479,14 @@ onBeforeUnmount(() => {
                                     </button>
                                 </div>
                             </div>
-
                             <div v-else class="text-center">
-                                <div
-                                    v-if="qrResult"
-                                    class="bg-green-100 text-green-800 p-4 rounded-xl border border-green-200 animate-fadeIn"
-                                >
-                                    <p
-                                        class="font-bold flex items-center justify-center gap-2"
-                                    >
-                                        <CheckCircleIcon class="w-5 h-5" /> QR
-                                        Diterima!
-                                    </p>
-                                    <p class="text-xs mt-1 font-mono break-all">
-                                        {{ qrResult }}
-                                    </p>
-                                    <p class="text-xs text-gray-500 mt-2">
-                                        Sedang memproses...
-                                    </p>
-                                </div>
                                 <p
-                                    v-else
                                     class="text-sm text-gray-400 animate-pulse bg-gray-50 p-3 rounded-lg"
                                 >
                                     Kamera aktif. Silakan scan...
                                 </p>
                             </div>
                         </div>
-                    </div>
-
-                    <div
-                        class="p-4 bg-gray-50 border-t border-gray-100 text-center text-xs text-gray-400"
-                    >
-                        Pastikan browser diizinkan mengakses Kamera & Lokasi.
                     </div>
                 </div>
             </div>
@@ -516,32 +504,5 @@ onBeforeUnmount(() => {
     width: 100% !important;
     height: 100% !important;
     object-fit: cover !important;
-}
-@keyframes scan {
-    0% {
-        top: 0;
-    }
-    50% {
-        top: 100%;
-    }
-    100% {
-        top: 0;
-    }
-}
-.animate-scan {
-    animation: scan 2s linear infinite;
-}
-.animate-fadeIn {
-    animation: fadeIn 0.5s ease-in-out;
-}
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
 }
 </style>

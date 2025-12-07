@@ -16,7 +16,17 @@ class AttendanceController extends Controller
     // 1. Halaman Absen
     public function index()
     {
-        return Inertia::render('Attendance/Index');
+        // Ambil pengaturan sekolah
+        $settings = SystemSetting::first();
+
+        return Inertia::render('Attendance/Index', [
+            'schoolSettings' => [
+                // PERBAIKAN: Sesuaikan dengan nama kolom di database Anda (image_ab59b9.jpg)
+                'lat' => $settings ? (float) $settings->latitude : 0,
+                'lng' => $settings ? (float) $settings->longitude : 0,
+                'radius' => $settings ? (int) $settings->radius_limit : 50, // Kolomnya 'radius_limit'
+            ]
+        ]);
     }
 
     // 2. Halaman Izin
@@ -25,17 +35,21 @@ class AttendanceController extends Controller
         return Inertia::render('Attendance/Izin');
     }
 
-    // 3. PROSES SIMPAN ABSEN (INTI SISTEM)
+    // 3. PROSES SIMPAN ABSEN
     public function store(Request $request)
     {
         $user = Auth::user();
         
-        // Tentukan Redirect kemana setelah absen
-        // Jika Guru -> Balik ke Panel Guru
-        // Jika Siswa -> Balik ke Dashboard Siswa
+        $request->validate([
+            'latitude' => 'required',
+            'longitude' => 'required',
+            'type' => 'required|in:face,qr',
+            'photo' => 'nullable|image|max:5120',
+        ]);
+
         $redirectRoute = $user->role === 'teacher' ? 'teacher.dashboard' : 'dashboard';
 
-        // 1. CEK DUPLIKAT (ANTI SPAM)
+        // A. CEK DUPLIKAT
         $sudahAbsen = Attendance::where('user_id', $user->id)
                         ->where('date', now()->toDateString())
                         ->first();
@@ -45,32 +59,61 @@ class AttendanceController extends Controller
                 ->with('error', 'Anda sudah melakukan presensi hari ini!');
         }
 
-        // 2. LOGIKA SCAN (Wajah / QR)
+        // B. VALIDASI JARAK (SERVER SIDE)
+        $settings = SystemSetting::first();
+        if ($settings) {
+            // PERBAIKAN: Gunakan 'latitude' dan 'longitude' dari database
+            $jarak = $this->hitungJarak(
+                $request->latitude, 
+                $request->longitude, 
+                $settings->latitude, 
+                $settings->longitude
+            );
+
+            // PERBAIKAN: Gunakan 'radius_limit'
+            $maxRadius = (int) $settings->radius_limit;
+
+            if ($jarak > $maxRadius) {
+                return back()->withErrors(['location' => "Posisi Anda diluar radius! Jarak: " . round($jarak) . "m (Max: {$maxRadius}m)"]);
+            }
+        }
+
+        // C. VALIDASI TIPE ABSEN
         $type = $request->input('type', 'face');
         $photoPath = null;
         $description = '';
 
-        // ... (Logika Validasi QR / GPS biarkan sama seperti sebelumnya) ...
-        // Pastikan validasi QR menggunakan:
-        // if (! $this->isTokenValid($request->qr_code)) { ... }
+        if ($type === 'qr') {
+            if (! $this->isTokenValid($request->qr_code)) {
+                return back()->withErrors(['qr' => 'QR Code tidak valid!']);
+            }
+            $description = 'Absensi via QR Code';
+        } else {
+            if ($request->hasFile('photo')) {
+                $photoPath = $request->file('photo')->store('attendance_photos', 'public'); 
+                $description = 'Absensi Wajah';
+            } else {
+                return back()->withErrors(['photo' => 'Foto selfie wajib ada!']);
+            }
+        }
 
-        // 3. SIMPAN KE DATABASE
+        // D. SIMPAN
         Attendance::create([
-            'user_id' => $user->id, // Ini akan menyimpan ID Guru jika Guru yang login
+            'user_id' => $user->id,
             'date' => now()->toDateString(),
             'time_in' => now()->toTimeString(),
             'status' => 'Hadir',
             'description' => $description,
             'approval_status' => 'approved',
             'photo_path' => $photoPath,
-            'latitude' => $request->latitude ?? 0,
-            'longitude' => $request->longitude ?? 0,
+            'latitude' => $request->latitude,
+            'longitude' => $request->longitude,
         ]);
 
         return redirect()->route($redirectRoute)->with('success', 'Absensi Berhasil Tercatat!');
     }
 
-    // Rumus Jarak
+    // Rumus Haversine
     private function hitungJarak($lat1, $lon1, $lat2, $lon2) {
         $earthRadius = 6371000; 
         $dLat = deg2rad($lat2 - $lat1);
@@ -85,6 +128,4 @@ class AttendanceController extends Controller
         $dataAbsensi = Attendance::where('user_id', Auth::id())->latest()->get();
         return Inertia::render('Attendance/Rekap', ['absensi' => $dataAbsensi]);
     }
-
-    
 }
