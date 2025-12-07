@@ -10,9 +10,11 @@ import {
 } from "@heroicons/vue/24/solid";
 import { computed } from "vue";
 
+// Menambahkan props 'teachers' untuk menerima data guru dari controller
 const props = defineProps({
     attendances: Array,
     classes: Array,
+    teachers: Array, // <--- TAMBAHAN: Data Guru
     filters: Object,
 });
 
@@ -20,17 +22,22 @@ const form = useForm({
     start_date: props.filters.start_date,
     end_date: props.filters.end_date,
     class_id: props.filters.class_id || "",
-    role: props.filters.role || "student", // Simpan role di form
+    teacher_id: props.filters.teacher_id || "", // <--- TAMBAHAN: Filter Guru
+    role: props.filters.role || "student",
 });
 
 // Judul Dinamis
 const pageTitle = computed(() => {
-    return props.filters.role === "teacher"
+    return form.role === "teacher"
         ? "Laporan Absensi Guru"
         : "Laporan Absensi Siswa";
 });
 
 const filterData = () => {
+    // Reset filter yang tidak relevan saat ganti role
+    if (form.role === "student") form.teacher_id = "";
+    if (form.role === "teacher") form.class_id = "";
+
     form.get(route("admin.attendance.report"), {
         preserveState: true,
         replace: true,
@@ -40,7 +47,7 @@ const filterData = () => {
 const printData = () => {
     const url =
         route("admin.attendance.report") +
-        `?print=true&role=${form.role}&start_date=${form.start_date}&end_date=${form.end_date}&class_id=${form.class_id}`;
+        `?print=true&role=${form.role}&start_date=${form.start_date}&end_date=${form.end_date}&class_id=${form.class_id}&teacher_id=${form.teacher_id}`;
     window.open(url, "_blank");
 };
 </script>
@@ -66,6 +73,21 @@ const printData = () => {
                         <div>
                             <label
                                 class="block text-xs font-bold text-gray-700 mb-1"
+                                >Tipe Laporan</label
+                            >
+                            <select
+                                v-model="form.role"
+                                @change="filterData"
+                                class="w-full rounded-lg border-gray-300 focus:ring-red-500 text-sm"
+                            >
+                                <option value="student">Siswa</option>
+                                <option value="teacher">Guru</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label
+                                class="block text-xs font-bold text-gray-700 mb-1"
                                 >Dari Tanggal</label
                             >
                             <input
@@ -74,7 +96,6 @@ const printData = () => {
                                 class="w-full rounded-lg border-gray-300 focus:ring-red-500 text-sm"
                             />
                         </div>
-
                         <div>
                             <label
                                 class="block text-xs font-bold text-gray-700 mb-1"
@@ -106,20 +127,39 @@ const printData = () => {
                                 </option>
                             </select>
                         </div>
-                        <div v-else></div>
 
-                        <div class="flex gap-2">
+                        <div v-if="form.role === 'teacher'">
+                            <label
+                                class="block text-xs font-bold text-gray-700 mb-1"
+                                >Nama Guru (Opsional)</label
+                            >
+                            <select
+                                v-model="form.teacher_id"
+                                class="w-full rounded-lg border-gray-300 focus:ring-red-500 text-sm"
+                            >
+                                <option value="">-- Semua Guru --</option>
+                                <option
+                                    v-for="t in teachers"
+                                    :key="t.id"
+                                    :value="t.id"
+                                >
+                                    {{ t.user.name }}
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="md:col-span-4 flex gap-2 mt-2">
                             <button
                                 @click="filterData"
-                                class="flex-1 bg-gray-800 text-white px-4 py-2.5 rounded-lg font-bold hover:bg-gray-700 flex justify-center items-center gap-2 text-sm transition"
+                                class="bg-gray-800 text-white px-6 py-2.5 rounded-lg font-bold hover:bg-gray-700 flex items-center gap-2 text-sm transition"
                             >
-                                <FunnelIcon class="w-4 h-4" /> Filter
+                                <FunnelIcon class="w-4 h-4" /> Tampilkan Data
                             </button>
                             <button
                                 @click="printData"
-                                class="flex-1 bg-red-600 text-white px-4 py-2.5 rounded-lg font-bold hover:bg-red-700 flex justify-center items-center gap-2 text-sm transition"
+                                class="bg-red-600 text-white px-6 py-2.5 rounded-lg font-bold hover:bg-red-700 flex items-center gap-2 text-sm transition"
                             >
-                                <PrinterIcon class="w-4 h-4" /> Cetak
+                                <PrinterIcon class="w-4 h-4" /> Cetak PDF
                             </button>
                         </div>
                     </div>
@@ -150,41 +190,42 @@ const printData = () => {
                             >Total: {{ attendances.length }}</span
                         >
                     </div>
+
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-white">
                                 <tr>
                                     <th
-                                        class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase"
+                                        class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap"
                                     >
                                         Tanggal
                                     </th>
                                     <th
-                                        class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase"
+                                        class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap"
                                     >
                                         Nama Lengkap
                                     </th>
 
                                     <th
                                         v-if="form.role === 'student'"
-                                        class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase"
+                                        class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap"
                                     >
                                         Kelas
                                     </th>
                                     <th
                                         v-else
-                                        class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase"
+                                        class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap"
                                     >
                                         NIP
                                     </th>
 
                                     <th
-                                        class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase"
+                                        class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase whitespace-nowrap"
                                     >
                                         Status
                                     </th>
                                     <th
-                                        class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase"
+                                        class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap"
                                     >
                                         Keterangan
                                     </th>
@@ -200,11 +241,12 @@ const printData = () => {
                                         class="px-6 py-4 text-sm text-gray-600 whitespace-nowrap"
                                     >
                                         {{ item.date }}
-                                        <span class="text-xs text-gray-400 ml-1"
+                                        <span
+                                            class="text-xs text-gray-400 ml-1 font-mono"
                                             >({{ item.time_in }})</span
                                         >
                                     </td>
-                                    <td class="px-6 py-4">
+                                    <td class="px-6 py-4 whitespace-nowrap">
                                         <div
                                             class="text-sm font-bold text-gray-800"
                                         >
@@ -217,24 +259,27 @@ const printData = () => {
 
                                     <td
                                         v-if="form.role === 'student'"
-                                        class="px-6 py-4 text-sm text-gray-600"
+                                        class="px-6 py-4 text-sm text-gray-600 whitespace-nowrap"
                                     >
                                         <span
-                                            class="bg-gray-100 px-2 py-1 rounded text-xs border"
-                                            >{{
+                                            class="bg-gray-100 px-2 py-1 rounded text-xs border font-bold"
+                                        >
+                                            {{
                                                 item.user.student?.kelas
                                                     ?.name || "-"
-                                            }}</span
-                                        >
+                                            }}
+                                        </span>
                                     </td>
                                     <td
                                         v-else
-                                        class="px-6 py-4 text-sm text-gray-600 font-mono"
+                                        class="px-6 py-4 text-sm text-gray-600 font-mono whitespace-nowrap"
                                     >
                                         {{ item.user.teacher?.nip || "-" }}
                                     </td>
 
-                                    <td class="px-6 py-4 text-center">
+                                    <td
+                                        class="px-6 py-4 text-center whitespace-nowrap"
+                                    >
                                         <span
                                             class="px-3 py-1 text-xs font-bold rounded-full border"
                                             :class="{
@@ -244,25 +289,27 @@ const printData = () => {
                                                     item.status === 'Sakit',
                                                 'bg-yellow-100 text-yellow-700 border-yellow-200':
                                                     item.status === 'Izin',
+                                                'bg-red-100 text-red-700 border-red-200':
+                                                    item.status === 'Alpha' ||
+                                                    item.status === 'Telat',
                                             }"
                                         >
                                             {{ item.status }}
                                         </span>
                                     </td>
                                     <td
-                                        class="px-6 py-4 text-sm text-gray-500 truncate max-w-xs"
+                                        class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate"
                                     >
-                                        {{ item.description }}
+                                        {{ item.description || "-" }}
                                     </td>
                                 </tr>
                                 <tr v-if="attendances.length === 0">
                                     <td
-                                        :colspan="
-                                            form.role === 'student' ? 5 : 5
-                                        "
-                                        class="px-6 py-12 text-center text-gray-400"
+                                        colspan="5"
+                                        class="px-6 py-12 text-center text-gray-400 italic"
                                     >
-                                        Tidak ada data absensi pada periode ini.
+                                        Tidak ada data absensi untuk periode
+                                        ini.
                                     </td>
                                 </tr>
                             </tbody>

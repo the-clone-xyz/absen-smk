@@ -64,26 +64,36 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
     Route::get('/dashboard', [AdminController::class, 'index'])->name('dashboard');
     Route::get('/users', [AdminController::class, 'userManagement'])->name('users.index');
     Route::patch('/users/{user}/update-role', [AdminController::class, 'updateRole'])->name('users.updateRole');
+    
     Route::prefix('subjects')->name('subjects.')->group(function () {
         Route::get('/', [AdminController::class, 'subjectManagement'])->name('index');
         Route::post('/', [AdminController::class, 'storeSubject'])->name('store');
         Route::patch('/{subject}', [AdminController::class, 'updateSubject'])->name('update');
         Route::delete('/{subject}', [AdminController::class, 'destroySubject'])->name('destroy');
     });
+    
     Route::prefix('classes')->name('classes.')->group(function () {
         Route::get('/', [AdminController::class, 'classManagement'])->name('index');
         Route::post('/', [AdminController::class, 'storeKelas'])->name('store');
         Route::patch('/{kelas}', [AdminController::class, 'updateKelas'])->name('update');
         Route::delete('/{kelas}', [AdminController::class, 'destroyKelas'])->name('destroy');
     });
+
+    // --- REKAP ABSENSI ---
     Route::get('/reports/attendance', [AdminController::class, 'attendanceReport'])->name('attendance.report');
+    
+    // [BARU] Route Rekap Guru
+    Route::get('/rekap-guru', [AttendanceController::class, 'rekapGuru'])->name('rekap.guru');
+
     Route::resource('teachers', \App\Http\Controllers\AdminTeacherController::class)->names('teachers');
     Route::resource('students', StudentController::class);
+    
     Route::prefix('schedules')->name('schedules.')->group(function () {
         Route::get('/', [AdminController::class, 'scheduleManagement'])->name('index');
         Route::post('/', [AdminController::class, 'storeSchedule'])->name('store');
         Route::delete('/{id}', [AdminController::class, 'destroySchedule'])->name('destroy');
     });
+    
     Route::get('/settings/qr-generator', [AdminController::class, 'qrGenerator'])->name('settings.qr');
     Route::get('/settings/get-qr-token', [AdminController::class, 'getQrToken'])->name('settings.get_qr');
     Route::get('/settings/attendance', [AdminController::class, 'attendanceSettings'])->name('settings.attendance');
@@ -93,12 +103,12 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
 // =========================================================================
 // ZONA UMUM (Profile)
 // =========================================================================
-    Route::middleware('auth')->group(function () {
-        Route::get('/absen', [AttendanceController::class, 'index'])->name('attendance.index');
-        Route::post('/absen', [AttendanceController::class, 'store'])->name('attendance.store');
-        Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-        Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-        Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.delete');
-    });
+Route::middleware('auth')->group(function () {
+    Route::get('/absen', [AttendanceController::class, 'index'])->name('attendance.index');
+    Route::post('/absen', [AttendanceController::class, 'store'])->name('attendance.store');
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.delete');
+});
 
 require __DIR__.'/auth.php';

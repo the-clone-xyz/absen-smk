@@ -85,4 +85,6 @@ class AttendanceController extends Controller
         $dataAbsensi = Attendance::where('user_id', Auth::id())->latest()->get();
         return Inertia::render('Attendance/Rekap', ['absensi' => $dataAbsensi]);
     }
+
+    
 }

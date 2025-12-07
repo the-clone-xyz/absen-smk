@@ -249,6 +249,7 @@ class AdminController extends Controller
         $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
         $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
         $classId = $request->input('class_id');
+        $teacherId = $request->input('teacher_id');
         
         // TANGKAP ROLE (Default ke student jika tidak ada)
         $targetRole = $request->input('role', 'student'); 
@@ -257,26 +258,45 @@ class AdminController extends Controller
         $query = \App\Models\Attendance::with(['user.student.kelas', 'user.teacher'])
                     ->whereBetween('date', [$startDate, $endDate])
                     ->whereHas('user', function($q) use ($targetRole) {
-                        $q->where('role', $targetRole); // <--- FILTER ROLE DISINI
+                        $q->where('role', $targetRole); 
                     });
 
-        // Filter Kelas (Hanya jika role = student)
+        // --- FILTER KELAS (Khusus Siswa) ---
         if ($targetRole === 'student' && $classId) {
             $query->whereHas('user.student', function($q) use ($classId) {
                 $q->where('class_id', $classId);
             });
         }
 
+        // --- FILTER SPESIFIK GURU (Khusus Guru) ---
+        if ($targetRole === 'teacher' && $teacherId) {
+            $query->whereHas('user.teacher', function($q) use ($teacherId) {
+                $q->where('id', $teacherId);
+            });
+        }
+
         $attendances = $query->latest('date')->get();
-        $classes = Kelas::orderBy('name')->get(); // Data kelas tetap dikirim
+        
+        // DATA PENDUKUNG DROPDOWN (Perbaikan Disini: Pakai Model 'Kelas')
+        $classes = \App\Models\Kelas::orderBy('name')->get();  // <--- DULU ERROR DISINI
+        $teachers = \App\Models\Teacher::with('user')->get(); 
 
         // Mode Cetak (Blade)
         if ($request->has('print')) {
+            $filterLabel = 'Semua';
+            if ($targetRole == 'student' && $classId) {
+                $kelasData = \App\Models\Kelas::find($classId); // <--- PERBAIKAN DISINI JUGA
+                $filterLabel = $kelasData ? $kelasData->name : '-';
+            } elseif ($targetRole == 'teacher' && $teacherId) {
+                $guru = \App\Models\Teacher::with('user')->find($teacherId);
+                $filterLabel = $guru ? $guru->user->name : '-';
+            }
+
             return view('print.attendance_report', [
                 'attendances' => $attendances,
                 'start_date' => $startDate,
                 'end_date' => $endDate,
-                'kelas_nama' => ($targetRole == 'student' && $classId) ? Kelas::find($classId)->name : 'Semua',
+                'kelas_nama' => $filterLabel,
                 'role_label' => $targetRole == 'student' ? 'Siswa' : 'Guru'
             ]);
         }
@@ -285,11 +305,13 @@ class AdminController extends Controller
         return Inertia::render('Admin/Attendance/Report', [
             'attendances' => $attendances,
             'classes' => $classes,
+            'teachers' => $teachers, 
             'filters' => [
                 'start_date' => $startDate,
                 'end_date' => $endDate,
                 'class_id' => $classId,
-                'role' => $targetRole, // Kirim info role ke frontend
+                'teacher_id' => $teacherId,
+                'role' => $targetRole,
             ]
         ]);
     }
