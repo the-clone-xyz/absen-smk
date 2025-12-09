@@ -1,4 +1,5 @@
 <script setup>
+import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { Head } from "@inertiajs/vue3";
 import {
     ArrowLeftIcon,
@@ -8,10 +9,11 @@ import {
     PhotoIcon,
     BookOpenIcon,
     ExclamationTriangleIcon,
+    PresentationChartLineIcon, // <--- IKON BARU UNTUK PPT
 } from "@heroicons/vue/24/solid";
 import { computed, ref, onMounted } from "vue";
-import mammoth from "mammoth"; // npm install mammoth
-import * as XLSX from "xlsx"; // npm install xlsx
+import mammoth from "mammoth";
+import * as XLSX from "xlsx";
 
 const props = defineProps({
     fileUrl: String,
@@ -20,12 +22,11 @@ const props = defineProps({
     downloadUrl: String,
 });
 
-// State untuk Dokumen Office
 const contentHtml = ref("");
 const isLoading = ref(false);
 const errorMsg = ref(null);
 
-// Deteksi Tipe File
+// Kategori File
 const isImage = computed(() =>
     ["jpg", "jpeg", "png", "webp", "gif"].includes(props.extension)
 );
@@ -34,10 +35,12 @@ const isWord = computed(() => ["docx"].includes(props.extension));
 const isExcel = computed(() =>
     ["xlsx", "xls", "csv"].includes(props.extension)
 );
+// Deteksi PPT
+const isPpt = computed(() => ["ppt", "pptx"].includes(props.extension));
 
-// --- ENGINE RENDERER (OFFLINE) ---
 const renderDocument = async () => {
-    if (isImage.value || isPdf.value) return; // Browser native handle
+    // PPT, Gambar, PDF tidak perlu dirender oleh JS Library khusus
+    if (isImage.value || isPdf.value || isPpt.value) return;
 
     isLoading.value = true;
     try {
@@ -68,7 +71,6 @@ const renderDocument = async () => {
 
 onMounted(() => renderDocument());
 
-// Fungsi Back (Bisa kembali ke halaman sebelumnya, entah itu Guru/Siswa/Perpustakaan)
 const goBack = () => window.history.back();
 </script>
 
@@ -95,6 +97,10 @@ const goBack = () => window.history.back();
                         <BookOpenIcon v-else-if="isPdf" class="w-6 h-6" />
                         <DocumentTextIcon v-else-if="isWord" class="w-6 h-6" />
                         <TableCellsIcon v-else-if="isExcel" class="w-6 h-6" />
+                        <PresentationChartLineIcon
+                            v-else-if="isPpt"
+                            class="w-6 h-6"
+                        />
                         <DocumentTextIcon v-else class="w-6 h-6" />
                     </div>
                     <div class="overflow-hidden">
@@ -161,6 +167,37 @@ const goBack = () => window.history.back();
                 <div v-else v-html="contentHtml" class="prose max-w-none"></div>
             </div>
 
+            <div v-else-if="isPpt" class="text-center mt-10 md:mt-20">
+                <div
+                    class="bg-white p-10 rounded-3xl shadow-xl max-w-md mx-auto border border-gray-100"
+                >
+                    <div
+                        class="bg-orange-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6 text-orange-500"
+                    >
+                        <PresentationChartLineIcon class="w-12 h-12" />
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-2">
+                        Mode Presentasi
+                    </h3>
+                    <p class="text-gray-500 mb-8 text-sm leading-relaxed">
+                        File presentasi <b>({{ extension }})</b> paling baik
+                        dilihat menggunakan aplikasi PowerPoint. Silakan
+                        download untuk membukanya.
+                    </p>
+                    <a
+                        :href="downloadUrl"
+                        class="w-full flex justify-center items-center gap-2 bg-orange-600 text-white py-3.5 rounded-xl font-bold hover:bg-orange-700 transition shadow-lg shadow-orange-200"
+                    >
+                        <ArrowDownTrayIcon class="w-5 h-5" />
+                        Download Presentasi
+                    </a>
+                    <p class="mt-4 text-[10px] text-gray-400">
+                        Tips: Minta Guru upload versi PDF agar bisa dibaca
+                        langsung.
+                    </p>
+                </div>
+            </div>
+
             <div v-else class="text-center mt-20">
                 <div class="bg-white p-8 rounded-2xl shadow-lg inline-block">
                     <p class="text-gray-600 mb-4">
@@ -178,7 +215,7 @@ const goBack = () => window.history.back();
 </template>
 
 <style>
-/* Style Global untuk Dokumen Rendered */
+/* CSS tetap sama */
 .doc-canvas table {
     border-collapse: collapse;
     width: 100%;
