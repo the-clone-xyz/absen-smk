@@ -96,11 +96,10 @@ class TeacherController extends Controller
                 ->where('date', now()->toDateString())
                 ->first();
 
-        // 3. Ambil Data Tugas (FIXED QUERY)
-        // Pastikan mengambil tugas berdasarkan Kelas DAN Mapel, diurutkan terbaru
+        // 3. Ambil Data Tugas
         $tasks = Task::with('submissions.student')
-                ->where('kelas_id', $schedule->kelas_id)
-                ->where('subject_id', $schedule->subject_id)
+                ->where('kelas_id', $schedule->class->id)     // Gunakan relasi agar pasti ID-nya benar
+                ->where('subject_id', $schedule->subject->id) // Gunakan relasi agar pasti ID-nya benar
                 ->latest()
                 ->get();
 
@@ -108,7 +107,7 @@ class TeacherController extends Controller
             'schedule' => $schedule,
             'students' => $schedule->class->students,
             'existingJournal' => $existingJournal,
-            'tasks' => $tasks // <--- Ini dikirim ke Vue
+            'tasks' => $tasks
         ]);
     }
 
@@ -185,7 +184,6 @@ class TeacherController extends Controller
         return redirect()->route('teacher.dashboard')->with('success', 'Kelas selesai! Data tersimpan.');
     }
 
-    // ... (Sisa method Realtime & Approval biarkan sama persis seperti sebelumnya) ...
     
     public function getQrToken() { return response()->json(['token' => $this->generateAttendanceToken(0)]); }
 
