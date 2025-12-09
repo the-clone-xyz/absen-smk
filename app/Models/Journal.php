@@ -8,4 +8,8 @@ class Journal extends Model
 
     public function schedule() { return $this->belongsTo(Schedule::class); }
     public function teacher() { return $this->belongsTo(Teacher::class); }
+    public function attendances()
+    {
+        return $this->hasMany(JournalAttendance::class); 
+    }
 }

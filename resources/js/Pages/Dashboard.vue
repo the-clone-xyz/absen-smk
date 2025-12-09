@@ -1,11 +1,11 @@
 <script setup>
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
-import { Head, Link, usePage } from "@inertiajs/vue3";
-import { computed, ref, watch } from "vue";
+import { Head, Link } from "@inertiajs/vue3";
+import { computed, ref } from "vue";
 import {
     CalendarDaysIcon,
     ClipboardDocumentCheckIcon,
-    DocumentTextIcon,
+    ClipboardDocumentListIcon, // Icon Tugas
     UserCircleIcon,
     ClockIcon,
     BookOpenIcon,
@@ -18,8 +18,8 @@ import {
 const props = defineProps({
     auth: Object,
     statistik: Object,
-    jadwal: Array, // Data Jadwal Realtime
-    riwayatAbsen: Object, // Data Riwayat Bulanan
+    jadwal: Array,
+    riwayatAbsen: Object,
 });
 
 // --- LOGIKA KALENDER ---
@@ -42,7 +42,6 @@ const monthNames = [
     "Desember",
 ];
 
-// Navigasi Bulan
 const prevMonth = () => {
     if (currentMonth.value === 0) {
         currentMonth.value = 11;
@@ -74,17 +73,12 @@ const calendarDays = computed(() => {
         0
     ).getDate();
 
-    // Isi kotak kosong di awal bulan
     for (let i = 0; i < firstDay; i++) days.push(null);
 
-    // Isi tanggal
     for (let i = 1; i <= daysInMonth; i++) {
-        // Format tanggal YYYY-MM-DD agar cocok dengan key di database
         const dateStr = `${currentYear.value}-${String(
             currentMonth.value + 1
         ).padStart(2, "0")}-${String(i).padStart(2, "0")}`;
-
-        // Cek data riwayat
         const riwayat = props.riwayatAbsen ? props.riwayatAbsen[dateStr] : null;
 
         days.push({
@@ -113,80 +107,91 @@ const isToday = (day) => {
             <div
                 class="flex flex-col md:flex-row justify-between items-center gap-4"
             >
-                <h2
-                    class="font-extrabold text-2xl text-green-900 leading-none tracking-tight"
-                >
-                    Dashboard Siswa
-                </h2>
+                <div>
+                    <h2
+                        class="font-extrabold text-2xl text-gray-800 leading-tight"
+                    >
+                        Dashboard
+                    </h2>
+                    <p class="text-sm text-gray-500">
+                        Selamat datang di Sistem Informasi Sekolah
+                    </p>
+                </div>
 
                 <Link
                     :href="route('attendance.index')"
-                    class="bg-green-600 text-white px-6 py-2.5 rounded-xl hover:bg-green-700 flex items-center gap-2 text-sm font-bold shadow-lg shadow-green-200 transition transform active:scale-95"
+                    class="bg-green-600 text-white px-6 py-3 rounded-xl hover:bg-green-700 flex items-center gap-2 text-sm font-bold shadow-lg shadow-green-600/30 transition transform hover:-translate-y-1"
                 >
                     <QrCodeIcon class="w-5 h-5" /> SCAN ABSEN
                 </Link>
             </div>
         </template>
 
-        <div class="py-6">
+        <div class="py-8">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div class="lg:col-span-2 space-y-6">
+                    <div class="lg:col-span-2 space-y-8">
                         <div
-                            class="bg-gradient-to-br from-green-600 to-emerald-700 rounded-2xl p-6 shadow-xl text-white relative overflow-hidden"
+                            class="bg-gradient-to-br from-green-600 to-emerald-800 rounded-3xl p-8 shadow-xl text-white relative overflow-hidden"
                         >
                             <div
-                                class="absolute right-0 top-0 opacity-10 transform translate-x-4 -translate-y-4"
+                                class="absolute right-0 top-0 opacity-10 transform translate-x-10 -translate-y-10"
                             >
-                                <ClockIcon class="w-40 h-40" />
+                                <ClockIcon class="w-48 h-48" />
                             </div>
 
                             <div class="relative z-10">
-                                <h3 class="text-xl font-bold opacity-95">
-                                    Halo, {{ auth.user.name }}! 👋
-                                </h3>
-                                <p
-                                    class="text-green-100 text-sm mb-6 max-w-md mt-1"
-                                >
-                                    Jangan lupa absen sebelum jam 07:00 WIB agar
-                                    tidak terlambat.
-                                </p>
-
-                                <div class="grid grid-cols-3 gap-3">
+                                <div class="flex items-center gap-4 mb-6">
                                     <div
-                                        class="bg-white/10 backdrop-blur-sm p-3 rounded-xl border border-white/10 text-center"
+                                        class="bg-white/20 p-3 rounded-full backdrop-blur-sm border border-white/20"
                                     >
-                                        <p class="text-2xl font-bold">
+                                        <UserIcon class="w-8 h-8 text-white" />
+                                    </div>
+                                    <div>
+                                        <h3 class="text-2xl font-bold">
+                                            Halo, {{ auth.user.name }}!
+                                        </h3>
+                                        <p class="text-green-100 text-sm">
+                                            {{ auth.user.email }}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-3 gap-4">
+                                    <div
+                                        class="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 text-center hover:bg-white/20 transition"
+                                    >
+                                        <p class="text-3xl font-extrabold">
                                             {{ statistik.hadir }}
                                         </p>
                                         <p
-                                            class="text-[10px] uppercase font-bold text-green-100"
+                                            class="text-xs uppercase font-bold text-green-200 tracking-wider"
                                         >
                                             Hadir
                                         </p>
                                     </div>
                                     <div
-                                        class="bg-white/10 backdrop-blur-sm p-3 rounded-xl border border-white/10 text-center"
+                                        class="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 text-center hover:bg-white/20 transition"
                                     >
-                                        <p class="text-2xl font-bold">
+                                        <p class="text-3xl font-extrabold">
                                             {{ statistik.sakit }}
                                         </p>
                                         <p
-                                            class="text-[10px] uppercase font-bold text-green-100"
+                                            class="text-xs uppercase font-bold text-green-200 tracking-wider"
                                         >
-                                            Izin
+                                            Izin/Sakit
                                         </p>
                                     </div>
                                     <div
-                                        class="bg-white/10 backdrop-blur-sm p-3 rounded-xl border border-white/10 text-center"
+                                        class="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 text-center hover:bg-white/20 transition"
                                     >
-                                        <p class="text-2xl font-bold">
+                                        <p class="text-3xl font-extrabold">
                                             {{ statistik.total }}
                                         </p>
                                         <p
-                                            class="text-[10px] uppercase font-bold text-green-100"
+                                            class="text-xs uppercase font-bold text-green-200 tracking-wider"
                                         >
-                                            Total
+                                            Total Hari
                                         </p>
                                     </div>
                                 </div>
@@ -198,100 +203,107 @@ const isToday = (day) => {
                                 class="font-bold text-gray-800 text-lg mb-4 flex items-center gap-2"
                             >
                                 <span
-                                    class="w-1 h-6 bg-green-500 rounded-full"
+                                    class="w-1.5 h-6 bg-green-500 rounded-full"
                                 ></span>
-                                Menu Utama
+                                Akses Cepat
                             </h3>
                             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 <Link
                                     :href="route('attendance.rekap')"
-                                    class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:border-green-500 hover:shadow-md transition flex flex-col items-center gap-2 text-center group"
+                                    class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 hover:border-green-500 hover:shadow-lg hover:-translate-y-1 transition flex flex-col items-center gap-3 text-center group"
                                 >
                                     <div
-                                        class="w-12 h-12 bg-yellow-50 rounded-full flex items-center justify-center text-yellow-600 group-hover:bg-yellow-500 group-hover:text-white transition"
+                                        class="w-14 h-14 bg-yellow-50 rounded-full flex items-center justify-center text-yellow-600 group-hover:bg-yellow-500 group-hover:text-white transition shadow-sm"
                                     >
-                                        <CalendarDaysIcon class="w-6 h-6" />
+                                        <CalendarDaysIcon class="w-7 h-7" />
                                     </div>
                                     <span
-                                        class="text-xs font-bold text-gray-600"
-                                        >Riwayat</span
+                                        class="text-sm font-bold text-gray-700"
+                                        >Riwayat Absen</span
                                     >
                                 </Link>
+
                                 <Link
                                     :href="route('attendance.izin')"
-                                    class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:border-green-500 hover:shadow-md transition flex flex-col items-center gap-2 text-center group"
+                                    class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 hover:border-green-500 hover:shadow-lg hover:-translate-y-1 transition flex flex-col items-center gap-3 text-center group"
                                 >
                                     <div
-                                        class="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 group-hover:bg-blue-500 group-hover:text-white transition"
+                                        class="w-14 h-14 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 group-hover:bg-blue-500 group-hover:text-white transition shadow-sm"
                                     >
                                         <ClipboardDocumentCheckIcon
-                                            class="w-6 h-6"
+                                            class="w-7 h-7"
                                         />
                                     </div>
                                     <span
-                                        class="text-xs font-bold text-gray-600"
-                                        >Izin</span
+                                        class="text-sm font-bold text-gray-700"
+                                        >Ajukan Izin</span
                                     >
                                 </Link>
-                                <div
-                                    class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center gap-2 text-center opacity-60 cursor-not-allowed"
+
+                                <Link
+                                    :href="route('tasks.index')"
+                                    class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 hover:border-green-500 hover:shadow-lg hover:-translate-y-1 transition flex flex-col items-center gap-3 text-center group"
                                 >
                                     <div
-                                        class="w-12 h-12 bg-purple-50 rounded-full flex items-center justify-center text-purple-600"
+                                        class="w-14 h-14 bg-purple-50 rounded-full flex items-center justify-center text-purple-600 group-hover:bg-purple-500 group-hover:text-white transition shadow-sm"
                                     >
-                                        <DocumentTextIcon class="w-6 h-6" />
+                                        <ClipboardDocumentListIcon
+                                            class="w-7 h-7"
+                                        />
                                     </div>
                                     <span
-                                        class="text-xs font-bold text-gray-600"
-                                        >E-Raport</span
+                                        class="text-sm font-bold text-gray-700"
+                                        >Tugas & PR</span
                                     >
-                                </div>
+                                </Link>
+
                                 <Link
                                     :href="route('profile.edit')"
-                                    class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:border-green-500 hover:shadow-md transition flex flex-col items-center gap-2 text-center group"
+                                    class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 hover:border-green-500 hover:shadow-lg hover:-translate-y-1 transition flex flex-col items-center gap-3 text-center group"
                                 >
                                     <div
-                                        class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 group-hover:bg-gray-800 group-hover:text-white transition"
+                                        class="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 group-hover:bg-gray-800 group-hover:text-white transition shadow-sm"
                                     >
-                                        <UserCircleIcon class="w-6 h-6" />
+                                        <UserCircleIcon class="w-7 h-7" />
                                     </div>
                                     <span
-                                        class="text-xs font-bold text-gray-600"
-                                        >Profil</span
+                                        class="text-sm font-bold text-gray-700"
+                                        >Profil Saya</span
                                     >
                                 </Link>
                             </div>
                         </div>
                     </div>
 
-                    <div class="space-y-6">
+                    <div class="space-y-8">
                         <div
-                            class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+                            class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden"
                         >
                             <div
-                                class="bg-green-50 px-6 py-4 border-b border-green-100 flex justify-between items-center"
+                                class="bg-gradient-to-r from-green-50 to-white px-6 py-4 border-b border-gray-100 flex justify-between items-center"
                             >
-                                <span class="font-bold text-green-800"
+                                <span class="font-bold text-green-900 text-lg"
                                     >{{ monthNames[currentMonth] }}
                                     {{ currentYear }}</span
                                 >
-                                <div class="flex gap-2">
+                                <div class="flex gap-1">
                                     <button
                                         @click="prevMonth"
-                                        class="p-1 hover:bg-green-200 rounded text-green-700"
+                                        class="p-1.5 hover:bg-white rounded-full text-green-700 shadow-sm border border-transparent hover:border-gray-200 transition"
                                     >
-                                        <ChevronLeftIcon class="w-4 h-4" />
+                                        <ChevronLeftIcon class="w-5 h-5" />
                                     </button>
                                     <button
                                         @click="nextMonth"
-                                        class="p-1 hover:bg-green-200 rounded text-green-700"
+                                        class="p-1.5 hover:bg-white rounded-full text-green-700 shadow-sm border border-transparent hover:border-gray-200 transition"
                                     >
-                                        <ChevronRightIcon class="w-4 h-4" />
+                                        <ChevronRightIcon class="w-5 h-5" />
                                     </button>
                                 </div>
                             </div>
-                            <div class="p-4">
-                                <div class="grid grid-cols-7 text-center mb-2">
+
+                            <div class="p-5">
+                                <div class="grid grid-cols-7 text-center mb-4">
                                     <span
                                         v-for="d in [
                                             'M',
@@ -307,26 +319,25 @@ const isToday = (day) => {
                                         >{{ d }}</span
                                     >
                                 </div>
+
                                 <div
-                                    class="grid grid-cols-7 gap-1 text-center text-sm"
+                                    class="grid grid-cols-7 gap-2 text-center text-sm"
                                 >
                                     <div
                                         v-for="(day, index) in calendarDays"
                                         :key="index"
-                                        class="h-9 flex flex-col items-center justify-center rounded-lg relative"
+                                        class="h-10 flex flex-col items-center justify-center rounded-lg relative transition hover:bg-gray-50"
                                         :class="
-                                            day
-                                                ? isToday(day.date)
-                                                    ? 'bg-green-600 text-white font-bold shadow-md'
-                                                    : 'text-gray-700'
-                                                : ''
+                                            day && isToday(day.date)
+                                                ? 'bg-green-600 text-white font-bold shadow-md hover:bg-green-700'
+                                                : 'text-gray-700'
                                         "
                                     >
                                         <span v-if="day">{{ day.date }}</span>
 
                                         <span
                                             v-if="day && day.status"
-                                            class="w-1.5 h-1.5 rounded-full absolute bottom-1"
+                                            class="w-2 h-2 rounded-full absolute -bottom-1 border-2 border-white"
                                             :class="{
                                                 'bg-green-500':
                                                     day.status === 'Hadir',
@@ -334,7 +345,8 @@ const isToday = (day) => {
                                                     day.status === 'Izin' ||
                                                     day.status === 'Sakit',
                                                 'bg-red-500':
-                                                    day.status === 'Alpha',
+                                                    day.status === 'Alpha' ||
+                                                    day.status === 'Telat',
                                             }"
                                         >
                                         </span>
@@ -342,26 +354,32 @@ const isToday = (day) => {
                                 </div>
 
                                 <div
-                                    class="mt-3 flex justify-center gap-3 text-[10px] text-gray-500"
+                                    class="mt-6 flex justify-center gap-4 text-[10px] text-gray-500 border-t pt-4"
                                 >
-                                    <div class="flex items-center gap-1">
+                                    <div class="flex items-center gap-1.5">
                                         <span
-                                            class="w-2 h-2 rounded-full bg-green-500"
+                                            class="w-2.5 h-2.5 rounded-full bg-green-500"
                                         ></span>
                                         Hadir
                                     </div>
-                                    <div class="flex items-center gap-1">
+                                    <div class="flex items-center gap-1.5">
                                         <span
-                                            class="w-2 h-2 rounded-full bg-yellow-500"
+                                            class="w-2.5 h-2.5 rounded-full bg-yellow-500"
                                         ></span>
-                                        Izin
+                                        Izin/Sakit
+                                    </div>
+                                    <div class="flex items-center gap-1.5">
+                                        <span
+                                            class="w-2.5 h-2.5 rounded-full bg-red-500"
+                                        ></span>
+                                        Alpha
                                     </div>
                                 </div>
                             </div>
                         </div>
 
                         <div
-                            class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+                            class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden"
                         >
                             <div
                                 class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white"
@@ -375,7 +393,7 @@ const isToday = (day) => {
                                     Jadwal Hari Ini
                                 </h3>
                                 <span
-                                    class="text-[10px] font-bold bg-gray-100 text-gray-500 px-2 py-1 rounded uppercase"
+                                    class="text-[10px] font-bold bg-green-50 text-green-700 px-2.5 py-1 rounded-full uppercase tracking-wide"
                                 >
                                     {{
                                         new Date().toLocaleDateString("id-ID", {
@@ -386,49 +404,70 @@ const isToday = (day) => {
                             </div>
 
                             <div
-                                class="divide-y divide-gray-50 max-h-[300px] overflow-y-auto"
+                                class="p-2 max-h-[350px] overflow-y-auto custom-scrollbar"
                             >
                                 <div
                                     v-if="jadwal.length === 0"
-                                    class="p-6 text-center text-gray-400 text-xs italic"
+                                    class="p-8 text-center flex flex-col items-center justify-center text-gray-400"
                                 >
-                                    Tidak ada jadwal pelajaran.
+                                    <BookOpenIcon
+                                        class="w-12 h-12 mb-2 opacity-20"
+                                    />
+                                    <p class="text-sm">
+                                        Tidak ada jadwal pelajaran.
+                                    </p>
                                 </div>
 
                                 <div
                                     v-for="item in jadwal"
                                     :key="item.id"
-                                    class="p-4 hover:bg-green-50/30 transition flex items-start gap-4"
+                                    class="relative pl-6 py-3 hover:bg-gray-50 rounded-lg transition group"
                                 >
-                                    <div class="flex-shrink-0 w-14 text-center">
-                                        <span
-                                            class="text-xs font-bold text-gray-500 block"
-                                            >{{
-                                                item.start_time.substring(0, 5)
-                                            }}</span
-                                        >
-                                        <div
-                                            class="w-0.5 h-3 bg-gray-300 mx-auto my-0.5"
-                                        ></div>
-                                        <span
-                                            class="text-xs text-gray-400 block"
-                                            >{{
-                                                item.end_time.substring(0, 5)
-                                            }}</span
-                                        >
-                                    </div>
-                                    <div>
-                                        <h4
-                                            class="font-bold text-gray-800 text-sm"
-                                        >
-                                            {{ item.subject.name }}
-                                        </h4>
-                                        <p
-                                            class="text-xs text-green-600 flex items-center gap-1 mt-1"
-                                        >
-                                            <UserIcon class="w-3 h-3" />
-                                            {{ item.teacher.user.name }}
-                                        </p>
+                                    <div
+                                        class="absolute left-3 top-0 bottom-0 w-0.5 bg-gray-100 group-hover:bg-green-200 transition"
+                                    ></div>
+                                    <div
+                                        class="absolute left-[9px] top-1/2 -mt-1.5 w-3 h-3 rounded-full border-2 border-white bg-green-500 shadow-sm z-10"
+                                    ></div>
+
+                                    <div
+                                        class="flex justify-between items-center pr-4"
+                                    >
+                                        <div>
+                                            <h4
+                                                class="font-bold text-gray-800 text-sm group-hover:text-green-700 transition"
+                                            >
+                                                {{ item.subject.name }}
+                                            </h4>
+                                            <p
+                                                class="text-xs text-gray-500 flex items-center gap-1 mt-0.5"
+                                            >
+                                                <UserIcon class="w-3 h-3" />
+                                                {{ item.teacher.user.name }}
+                                            </p>
+                                        </div>
+                                        <div class="text-right">
+                                            <span
+                                                class="text-xs font-mono font-bold text-gray-600 bg-gray-100 px-2 py-1 rounded"
+                                                >{{
+                                                    item.start_time.substring(
+                                                        0,
+                                                        5
+                                                    )
+                                                }}</span
+                                            >
+                                            <p
+                                                class="text-[10px] text-gray-400 mt-1"
+                                            >
+                                                s/d
+                                                {{
+                                                    item.end_time.substring(
+                                                        0,
+                                                        5
+                                                    )
+                                                }}
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -439,4 +478,19 @@ const isToday = (day) => {
         </div>
     </AuthenticatedLayout>
 </template>
-cam
+
+<style scoped>
+.custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+}
+</style>

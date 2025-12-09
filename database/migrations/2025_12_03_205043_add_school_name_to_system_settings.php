@@ -12,7 +12,7 @@ return new class extends Migration
     public function up()
     {
         Schema::table('system_settings', function (Blueprint $table) {
-            $table->string('school_name')->default('SMK TAMANSISWA')->after('id');
+            // $table->string('school_name')->default('SMK TAMANSISWA')->after('id');
         });
     }
 
