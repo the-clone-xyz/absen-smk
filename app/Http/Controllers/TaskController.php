@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Task;
 use App\Models\TaskSubmission;
+use App\Models\Student; // <--- PENTING: Import Model Student
 use App\Models\Kelas;
 use App\Models\Subject;
 use Illuminate\Http\Request;
@@ -13,61 +14,45 @@ use Illuminate\Support\Facades\Storage;
 
 class TaskController extends Controller
 {
-    // --- GURU: LIHAT & BUAT TUGAS ---
+    // --- 1. HALAMAN LIST TUGAS (Opsional jika pakai Classroom View) ---
     public function index()
     {
         $user = Auth::user();
 
+        // Jika Guru
         if ($user->role === 'teacher') {
-            // Guru melihat tugas yang dia buat
             $tasks = Task::with(['kelas', 'subject'])
-                        ->where('teacher_id', $user->id)
-                        ->latest()
-                        ->get();
+                ->where('teacher_id', $user->teacher->id) // Pastikan relasi user->teacher ada
+                ->latest()
+                ->get();
             
-            // Data untuk dropdown form
-            $kelas = Kelas::all();
-            $subjects = Subject::all(); // Sesuaikan jika guru punya mapel spesifik
-
-            return Inertia::render('Teacher/Tasks/Index', [
-                'tasks' => $tasks,
-                'kelas_list' => $kelas,
-                'subjects' => $subjects
-            ]);
+            return Inertia::render('Teacher/Tasks/Index', ['tasks' => $tasks]);
         } 
         
+        // Jika Siswa
         if ($user->role === 'student') {
-            // Siswa melihat tugas di kelasnya
-            $studentClassId = $user->student->kelas_id; // Asumsi ada relasi student->kelas_id
-            
-            $tasks = Task::with(['teacher', 'subject', 'submissions' => function($q) use ($user) {
-                            $q->where('student_id', $user->id);
-                        }])
-                        ->where('kelas_id', $studentClassId)
-                        ->latest()
-                        ->get()
-                        ->map(function($task) {
-                            // Cek apakah siswa sudah mengumpulkan
-                            $task->is_submitted = $task->submissions->isNotEmpty();
-                            $task->my_score = $task->submissions->first()?->score;
-                            return $task;
-                        });
+            $student = $user->student;
+            $tasks = Task::with(['teacher.user', 'subject', 'submissions' => function($q) use ($student) {
+                    $q->where('student_id', $student->id);
+                }])
+                ->where('kelas_id', $student->kelas_id) // Filter sesuai kelas siswa
+                ->latest()
+                ->get();
 
-            return Inertia::render('Student/Tasks/Index', [
-                'tasks' => $tasks
-            ]);
+            return Inertia::render('Student/Tasks/Index', ['tasks' => $tasks]);
         }
     }
 
-    // --- GURU: SIMPAN TUGAS BARU ---
+    // --- 2. GURU: SIMPAN TUGAS BARU ---
     public function store(Request $request)
     {
         $request->validate([
-            'title' => 'required',
-            'kelas_id' => 'required',
-            'subject_id' => 'required',
+            'title' => 'required|string|max:255',
+            'kelas_id' => 'required|exists:kelas,id', // Validasi ID Kelas
+            'subject_id' => 'required|exists:subjects,id',
             'deadline' => 'required|date',
-            'file' => 'nullable|file|max:2048'
+            'description' => 'nullable|string',
+            'file' => 'nullable|file|max:5120', // Max 5MB
         ]);
 
         $path = null;
@@ -75,51 +60,54 @@ class TaskController extends Controller
             $path = $request->file('file')->store('tasks', 'public');
         }
 
+        // Ambil ID Guru dari User yang login
+        $teacherId = Auth::user()->teacher->id; 
+
         Task::create([
-            'teacher_id' => Auth::id(),
+            'teacher_id' => $teacherId,
             'kelas_id' => $request->kelas_id,
             'subject_id' => $request->subject_id,
             'title' => $request->title,
             'description' => $request->description,
             'deadline' => $request->deadline,
-            'attachment' => $path
+            'file_path' => $path // Sesuaikan nama kolom di DB (file_path / attachment)
         ]);
 
         return back()->with('success', 'Tugas berhasil dibuat!');
     }
 
-    // --- SISWA: KUMPULKAN TUGAS ---
-    public function submit(Request $request, $taskId)
+    // --- 3. GURU: LIHAT DETAIL & NILAI (METHOD YANG SEBELUMNYA HILANG) ---
+    public function show($id)
     {
-        $request->validate([
-            'file' => 'required|file|max:5120', // Max 5MB
+        // Ambil data tugas beserta submisi siswa
+        $task = Task::with(['submissions.student.user', 'kelas', 'subject'])->findOrFail($id);
+        
+        // Ambil daftar semua siswa di kelas tersebut (untuk melihat siapa yang belum kumpul)
+        // Pastikan kolom di tabel students adalah 'class_id' atau 'kelas_id' sesuai database Anda
+        $students = Student::with('user')
+                    ->where('class_id', $task->kelas_id) 
+                    ->orderBy('nis')
+                    ->get()
+                    ->map(function($student) use ($task) {
+                        // Cari apakah siswa ini punya submission di tugas ini
+                        $submission = $task->submissions->where('student_id', $student->id)->first();
+                        
+                        return [
+                            'id' => $student->id,
+                            'name' => $student->user->name,
+                            'nis' => $student->nis,
+                            'avatar' => $student->user->avatar, // Jika ada foto
+                            'submission' => $submission // Object submission atau null
+                        ];
+                    });
+
+        return Inertia::render('Teacher/Task/Show', [
+            'task' => $task,
+            'studentData' => $students
         ]);
-
-        $path = $request->file('file')->store('submissions', 'public');
-
-        TaskSubmission::updateOrCreate(
-            ['task_id' => $taskId, 'student_id' => Auth::id()],
-            [
-                'file_path' => $path,
-                'notes' => $request->notes
-            ]
-        );
-
-        return back()->with('success', 'Tugas berhasil dikirim!');
     }
 
-    public function gradeSubmission(Request $request, $id)
-    {
-        $request->validate([
-            'score' => 'required|numeric|min:0|max:100'
-        ]);
-
-        $submission = TaskSubmission::findOrFail($id);
-        $submission->update(['score' => $request->score]);
-
-        return back()->with('success', 'Nilai berhasil disimpan!');
-    }
-
+    // --- 4. GURU: UPDATE TUGAS ---
     public function update(Request $request, $id)
     {
         $task = Task::findOrFail($id);
@@ -136,8 +124,12 @@ class TaskController extends Controller
             'deadline' => $request->deadline,
         ];
 
+        // Jika ada file baru, hapus file lama dan upload yang baru
         if ($request->hasFile('file')) {
-            $data['attachment'] = $request->file('file')->store('tasks', 'public');
+            if ($task->file_path) {
+                Storage::disk('public')->delete($task->file_path);
+            }
+            $data['file_path'] = $request->file('file')->store('tasks', 'public');
         }
 
         $task->update($data);
@@ -145,10 +137,72 @@ class TaskController extends Controller
         return back()->with('success', 'Tugas berhasil diperbarui!');
     }
 
+    // --- 5. GURU: HAPUS TUGAS ---
     public function destroy($id)
     {
         $task = Task::findOrFail($id);
-        $task->delete(); // File attachment otomatis terhapus jika Anda setup observer, atau biarkan saja
-        return back()->with('success', 'Tugas dihapus!');
+        
+        // Hapus file fisik jika ada
+        if ($task->file_path) {
+            Storage::disk('public')->delete($task->file_path);
+        }
+
+        // Hapus file submission siswa juga (Opsional, biar bersih)
+        foreach($task->submissions as $submission) {
+            if($submission->file_path) {
+                Storage::disk('public')->delete($submission->file_path);
+            }
+        }
+
+        $task->delete();
+        
+        return redirect()->back()->with('success', 'Tugas berhasil dihapus!');
+    }
+
+    // --- 6. GURU: BERI NILAI ---
+    public function gradeSubmission(Request $request, $id)
+    {
+        $request->validate([
+            'score' => 'required|numeric|min:0|max:100'
+        ]);
+
+        $submission = TaskSubmission::findOrFail($id);
+        $submission->update(['score' => $request->score]);
+
+        return back()->with('success', 'Nilai berhasil disimpan!');
+    }
+
+    // --- 7. SISWA: KUMPULKAN TUGAS ---
+    public function submit(Request $request, $taskId)
+    {
+        $request->validate([
+            'file' => 'required|file|max:10240', // Max 10MB
+            'notes' => 'nullable|string'
+        ]);
+
+        // Ambil Data Siswa dari User yang login
+        $student = Auth::user()->student;
+
+        if (!$student) {
+            return back()->with('error', 'Data siswa tidak ditemukan.');
+        }
+
+        $path = $request->file('file')->store('submissions', 'public');
+
+        // Cek apakah sudah pernah kumpul (untuk update) atau buat baru
+        // Kita pakai updateOrCreate berdasarkan task_id dan student_id
+        $submission = TaskSubmission::updateOrCreate(
+            [
+                'task_id' => $taskId,
+                'student_id' => $student->id // Gunakan ID Student, bukan ID User
+            ],
+            [
+                'file_path' => $path,
+                'notes' => $request->notes,
+                'submitted_at' => now(), // Update waktu pengumpulan
+            ]
+        );
+
+        return back()->with('success', 'Tugas berhasil dikirim!');
     }
 }
