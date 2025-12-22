@@ -8,18 +8,15 @@ import {
     CloudArrowUpIcon,
     PaperClipIcon,
     CheckCircleIcon,
-    XMarkIcon,
-    ExclamationCircleIcon,
     StarIcon,
 } from "@heroicons/vue/24/solid";
 import { ref, computed } from "vue";
 
 const props = defineProps({
     task: Object,
-    submission: Object, // Data jawaban siswa (jika sudah pernah kumpul)
+    submission: Object,
 });
 
-// Format Tanggal
 const formatDate = (date) =>
     new Date(date).toLocaleString("id-ID", {
         weekday: "long",
@@ -29,16 +26,14 @@ const formatDate = (date) =>
         minute: "2-digit",
     });
 
-// Logic Form Upload
 const form = useForm({
     notes: props.submission?.notes || "",
     file: null,
 });
 
 const fileError = ref(null);
-const isEditing = ref(false); // Mode edit (untuk upload ulang)
+const isEditing = ref(false);
 
-// Handle File Select
 const handleFile = (e) => {
     const file = e.target.files[0];
     fileError.value = null;
@@ -46,7 +41,6 @@ const handleFile = (e) => {
 
     if (file) {
         if (file.size > 10 * 1024 * 1024) {
-            // 10MB
             fileError.value = "Ukuran file maksimal 10MB.";
             e.target.value = "";
         } else {
@@ -55,29 +49,26 @@ const handleFile = (e) => {
     }
 };
 
-// Kirim Tugas
 const submitTask = () => {
-    form.post(route("student.task.submit", props.task.id), {
+    // Pastikan route ini benar di web.php
+    form.post(route("student.tasks.submit", props.task.id), {
         forceFormData: true,
         preserveScroll: true,
         onSuccess: () => {
             isEditing.value = false;
-            form.reset("file"); // Reset input file setelah sukses
+            form.reset("file");
         },
     });
 };
 
 const goBack = () => window.history.back();
 
-// Status Logic
 const isSubmitted = computed(() => !!props.submission);
 const isGraded = computed(
     () =>
         props.submission?.score !== null &&
         props.submission?.score !== undefined
 );
-// Boleh edit jika: Belum dinilai
-const canEdit = computed(() => !isGraded.value);
 </script>
 
 <template>
@@ -97,7 +88,8 @@ const canEdit = computed(() => !isGraded.value);
                         Pengumpulan Tugas
                     </h2>
                     <p class="text-sm text-gray-500">
-                        {{ task.subject.name }} • {{ task.teacher.user.name }}
+                        {{ task.subject?.name || "Mapel" }} •
+                        {{ task.teacher?.user?.name || "Guru Tidak Dikenal" }}
                     </p>
                 </div>
             </div>
@@ -146,16 +138,13 @@ const canEdit = computed(() => !isGraded.value);
                                         >File Pendukung Tugas</span
                                     >
                                 </div>
-                                <Link
-                                    :href="
-                                        route('viewer.show', {
-                                            path: task.file_path,
-                                        })
-                                    "
+                                <a
+                                    :href="`/storage/${task.file_path}`"
+                                    target="_blank"
                                     class="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded font-bold hover:bg-indigo-700 transition"
                                 >
-                                    Buka File
-                                </Link>
+                                    Download
+                                </a>
                             </div>
                         </div>
                     </div>
@@ -200,7 +189,6 @@ const canEdit = computed(() => !isGraded.value);
                             <CheckCircleIcon class="w-5 h-5" /> Status:
                             Dikumpulkan
                         </div>
-
                         <div class="space-y-4">
                             <div class="text-sm">
                                 <p class="text-xs text-gray-400 font-bold mb-1">
@@ -213,22 +201,17 @@ const canEdit = computed(() => !isGraded.value);
                                     <DocumentTextIcon
                                         class="w-4 h-4 text-gray-500"
                                     />
-                                    <Link
-                                        :href="
-                                            route('viewer.show', {
-                                                path: submission.file_path,
-                                            })
-                                        "
+                                    <a
+                                        :href="`/storage/${submission.file_path}`"
+                                        target="_blank"
                                         class="text-blue-600 underline font-medium truncate"
+                                        >Lihat File Saya</a
                                     >
-                                        Lihat File Saya
-                                    </Link>
                                 </div>
                                 <p v-else class="text-gray-500 italic">
                                     - Tidak ada file -
                                 </p>
                             </div>
-
                             <div class="text-sm">
                                 <p class="text-xs text-gray-400 font-bold mb-1">
                                     Catatan Kamu:
@@ -239,7 +222,6 @@ const canEdit = computed(() => !isGraded.value);
                                     {{ submission.notes || "-" }}
                                 </p>
                             </div>
-
                             <button
                                 @click="isEditing = true"
                                 class="w-full mt-4 bg-white border border-gray-300 text-gray-700 py-2 rounded-lg text-sm font-bold hover:bg-gray-50 transition"
@@ -259,7 +241,6 @@ const canEdit = computed(() => !isGraded.value);
                             <CloudArrowUpIcon class="w-5 h-5 text-indigo-600" />
                             {{ isEditing ? "Edit Jawaban" : "Upload Jawaban" }}
                         </h3>
-
                         <form @submit.prevent="submitTask" class="space-y-4">
                             <div>
                                 <label
@@ -272,7 +253,6 @@ const canEdit = computed(() => !isGraded.value);
                                     class="w-full rounded-lg border-gray-300 text-sm focus:ring-indigo-500"
                                 ></textarea>
                             </div>
-
                             <div>
                                 <label
                                     class="block text-xs font-bold text-gray-500 uppercase mb-1"
@@ -291,7 +271,6 @@ const canEdit = computed(() => !isGraded.value);
                                         @change="handleFile"
                                         class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                     />
-
                                     <div
                                         v-if="form.file"
                                         class="flex flex-col items-center text-indigo-600"
@@ -325,7 +304,6 @@ const canEdit = computed(() => !isGraded.value);
                                     {{ fileError }}
                                 </p>
                             </div>
-
                             <div class="flex gap-2 pt-2">
                                 <button
                                     v-if="isEditing"

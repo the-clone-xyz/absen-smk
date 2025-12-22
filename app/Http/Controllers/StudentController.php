@@ -103,7 +103,7 @@ class StudentController extends Controller
         ]);
     }
 
-    public function submitTask(Request $request, $id)
+public function submitTask(Request $request, $id)
     {
         $request->validate([
             'file' => 'required|file|max:10240',
@@ -120,7 +120,7 @@ class StudentController extends Controller
             [
                 'file_path' => $path,
                 'notes' => $request->notes,
-                'submitted_at' => now(),
+                // 'submitted_at' => now(), <--- HAPUS BARIS INI
             ]
         );
 

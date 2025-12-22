@@ -9,25 +9,25 @@ class Schedule extends Model
 {
     use HasFactory;
 
-    // 1. PERBAIKAN ERROR MASS ASSIGNMENT
-    // Baris ini mengizinkan semua kolom untuk diisi
-    protected $guarded = []; 
+    protected $guarded = [];
 
-    // 2. DEFINISI RELASI (PENTING UNTUK TABEL NANTI)
-    
-    // Relasi ke Kelas (Contoh: XII RPL 1)
-    public function class()
+    // --- TAMBAHKAN BAGIAN INI ---
+
+    // 1. Relasi ke Kelas
+    public function kelas()
     {
+        // Parameter kedua 'class_id' WAJIB ada karena nama kolom di tabel schedules Anda adalah 'class_id'
+        // Jika tidak ditulis, Laravel akan mencari kolom 'kelas_id' dan error lagi.
         return $this->belongsTo(Kelas::class, 'class_id');
     }
 
-    // Relasi ke Mapel (Contoh: Matematika)
+    // 2. Relasi ke Mapel (Subject)
     public function subject()
     {
         return $this->belongsTo(Subject::class, 'subject_id');
     }
 
-    // Relasi ke Guru (Contoh: Pak Budi)
+    // 3. Relasi ke Guru (Teacher)
     public function teacher()
     {
         return $this->belongsTo(Teacher::class, 'teacher_id');

@@ -150,7 +150,7 @@ const getScheduleStatus = (startTimeStr) => {
                                 class="flex items-center gap-2 text-xs text-gray-500 mb-3"
                             >
                                 <UserGroupIcon class="w-4 h-4" />
-                                <span>{{ item.class.name }}</span>
+                                <span>{{ item.kelas?.name || "Kelas" }}</span>
                             </div>
 
                             <div

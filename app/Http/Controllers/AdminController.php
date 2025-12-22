@@ -186,20 +186,23 @@ class AdminController extends Controller
     // 4. MANAJEMEN JADWAL (SCHEDULES)
     // ===============================================
 
-    // Halaman Manajemen Jadwal
+// Halaman Manajemen Jadwal
     public function scheduleManagement(Request $request)
     {
         // Ambil Data Pendukung untuk Dropdown
-        $classes = Kelas::orderBy('name')->get();
-        $subjects = Subject::orderBy('name')->get();
+        $classes = \App\Models\Kelas::orderBy('name')->get(); // Pastikan model Kelas diimport atau namespace lengkap
+        $subjects = \App\Models\Subject::orderBy('name')->get();
+        
         // Ambil Guru beserta nama User-nya
         $teachers = \App\Models\Teacher::with('user')->get(); 
 
-        // Filter Jadwal Berdasarkan Kelas yang Dipilih (Jika ada)
-        $query = \App\Models\Schedule::with(['class', 'subject', 'teacher.user'])
+        // PERBAIKAN DI SINI:
+        // Ganti 'class' menjadi 'kelas' dalam array with()
+        $query = \App\Models\Schedule::with(['kelas', 'subject', 'teacher.user'])
                     ->orderByRaw("FIELD(day, 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu')")
                     ->orderBy('start_time');
 
+        // Filter (Asumsi nama kolom di database tetap 'class_id')
         if ($request->has('class_id') && $request->class_id != null) {
             $query->where('class_id', $request->class_id);
         }
@@ -208,7 +211,7 @@ class AdminController extends Controller
 
         return Inertia::render('Admin/Schedules/Index', [
             'schedules' => $schedules,
-            'classes' => $classes,
+            'classes' => $classes, // Variabel ini untuk dropdown filter, aman namanya tetap classes
             'subjects' => $subjects,
             'teachers' => $teachers,
             'filters' => $request->only(['class_id'])

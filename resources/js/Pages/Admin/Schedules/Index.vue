@@ -11,18 +11,17 @@ import { ref, watch } from "vue";
 
 const props = defineProps({
     schedules: Array,
-    classes: Array,
+    classes: Array, 
     subjects: Array,
     teachers: Array,
     filters: Object,
 });
 
 const showModal = ref(false);
-const selectedClass = ref(props.filters.class_id || ""); // Filter Kelas Aktif
+const selectedClass = ref(props.filters.class_id || "");
 
-// Form Tambah Jadwal
 const form = useForm({
-    class_id: selectedClass.value || "", // Auto-fill jika filter aktif
+    class_id: selectedClass.value || "",
     subject_id: "",
     teacher_id: "",
     day: "Senin",
@@ -32,15 +31,11 @@ const form = useForm({
 
 const days = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
 
-// Logic Filter Otomatis saat Dropdown Kelas Berubah
 watch(selectedClass, (value) => {
     router.get(
         route("admin.schedules.index"),
         { class_id: value },
-        {
-            preserveState: true,
-            replace: true,
-        }
+        { preserveState: true, replace: true }
     );
 });
 
@@ -48,8 +43,8 @@ const submit = () => {
     form.post(route("admin.schedules.store"), {
         onSuccess: () => {
             showModal.value = false;
-            form.reset("subject_id", "teacher_id", "start_time", "end_time"); // Sisakan Class & Day
-            form.class_id = selectedClass.value; // Tetap di kelas yang sama
+            form.reset("subject_id", "teacher_id", "start_time", "end_time");
+            form.class_id = selectedClass.value;
         },
     });
 };
@@ -160,13 +155,13 @@ const deleteSchedule = (id) => {
                                     >
                                 </td>
                                 <td class="px-6 py-4 font-medium text-gray-700">
-                                    {{ item.class.name }}
+                                    {{ item.kelas?.name }}
                                 </td>
                                 <td class="px-6 py-4 font-bold text-gray-900">
                                     {{ item.subject.name }}
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-600">
-                                    {{ item.teacher.user.name }}
+                                    {{ item.teacher?.user?.name }}
                                 </td>
                                 <td class="px-6 py-4 text-center">
                                     <button
@@ -191,7 +186,6 @@ const deleteSchedule = (id) => {
                 <h3 class="text-lg font-bold text-gray-800 mb-4">
                     Tambah Jadwal Pelajaran
                 </h3>
-
                 <form @submit.prevent="submit" class="space-y-4">
                     <div class="grid grid-cols-2 gap-4">
                         <div>
@@ -233,7 +227,6 @@ const deleteSchedule = (id) => {
                             </select>
                         </div>
                     </div>
-
                     <div>
                         <label
                             class="block text-xs font-bold text-gray-700 mb-1"
@@ -253,7 +246,6 @@ const deleteSchedule = (id) => {
                             </option>
                         </select>
                     </div>
-
                     <div>
                         <label
                             class="block text-xs font-bold text-gray-700 mb-1"
@@ -273,7 +265,6 @@ const deleteSchedule = (id) => {
                             </option>
                         </select>
                     </div>
-
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label
@@ -300,7 +291,6 @@ const deleteSchedule = (id) => {
                             />
                         </div>
                     </div>
-
                     <div class="flex justify-end gap-2 mt-4">
                         <button
                             type="button"

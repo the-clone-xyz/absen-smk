@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Task; // <--- PASTIKAN INI ADA
+use App\Models\Task; // <--- SUDAH DITAMBAHKAN
 use App\Models\Attendance;
 use App\Models\Schedule;
 use App\Models\Journal;
@@ -31,7 +31,8 @@ class TeacherController extends Controller
         // A. JADWAL HARI INI
         $jadwalHariIni = [];
         if ($teacher) {
-            $jadwalHariIni = Schedule::with(['class', 'subject'])
+            // PERBAIKAN: Ganti 'class' jadi 'kelas'
+            $jadwalHariIni = Schedule::with(['kelas', 'subject'])
                 ->where('teacher_id', $teacher->id)
                 ->where('day', $hariIni)
                 ->orderBy('start_time')
@@ -46,18 +47,21 @@ class TeacherController extends Controller
         }
 
         // B. JADWAL KALENDER
-        $jadwalBulanan = Schedule::with(['class', 'subject'])
+        // PERBAIKAN: Ganti 'class' jadi 'kelas'
+        $jadwalBulanan = Schedule::with(['kelas', 'subject'])
                             ->where('teacher_id', $teacher->id)
                             ->get()
                             ->groupBy('day');
 
         // C. ABSENSI PENDING
+        // PERBAIKAN: Pastikan eager loading 'kelas' benar
         $absensiGrouped = Attendance::with(['user.student.kelas'])
                             ->whereDate('created_at', now()->toDateString())
                             ->where('approval_status', 'pending')
                             ->latest()
                             ->get()
                             ->groupBy(function($item) {
+                                // PERBAIKAN: Akses properti 'kelas'
                                 return $item->user->student->kelas->name ?? 'Lainnya';
                             });
 
@@ -85,7 +89,8 @@ class TeacherController extends Controller
         $teacherId = auth()->user()->teacher->id;
         
         // 1. Ambil Jadwal & Siswa
-        $schedule = Schedule::with(['class.students.user', 'subject'])
+        // PERBAIKAN: Ganti 'class' jadi 'kelas'
+        $schedule = Schedule::with(['kelas.students.user', 'subject'])
                     ->where('id', $scheduleId)
                     ->where('teacher_id', $teacherId)
                     ->firstOrFail();
@@ -97,15 +102,17 @@ class TeacherController extends Controller
                 ->first();
 
         // 3. Ambil Data Tugas
+        // PERBAIKAN: Akses $schedule->kelas->id
         $tasks = Task::with('submissions.student')
-                ->where('kelas_id', $schedule->class->id)     // Gunakan relasi agar pasti ID-nya benar
-                ->where('subject_id', $schedule->subject->id) // Gunakan relasi agar pasti ID-nya benar
+                ->where('kelas_id', $schedule->kelas->id)     
+                ->where('subject_id', $schedule->subject->id) 
                 ->latest()
                 ->get();
 
         return Inertia::render('Teacher/Classroom', [
             'schedule' => $schedule,
-            'students' => $schedule->class->students,
+            // PERBAIKAN: Akses $schedule->kelas
+            'students' => $schedule->kelas->students,
             'existingJournal' => $existingJournal,
             'tasks' => $tasks
         ]);
@@ -180,11 +187,9 @@ class TeacherController extends Controller
             DB::table('journal_attendances')->insert($journalLogs);
         });
         
-        // Menggunakan Flash Message (with success) agar ditangkap Vue
         return redirect()->route('teacher.dashboard')->with('success', 'Kelas selesai! Data tersimpan.');
     }
 
-    
     public function getQrToken() { return response()->json(['token' => $this->generateAttendanceToken(0)]); }
 
     public function getClassQrToken($scheduleId) {
@@ -195,8 +200,10 @@ class TeacherController extends Controller
     }
 
     public function getClassData($scheduleId) {
-        $schedule = Schedule::with('class.students.user')->findOrFail($scheduleId);
-        $students = $schedule->class->students;
+        // PERBAIKAN: Ganti 'class' jadi 'kelas'
+        $schedule = Schedule::with('kelas.students.user')->findOrFail($scheduleId);
+        // PERBAIKAN: Akses $schedule->kelas
+        $students = $schedule->kelas->students;
         $studentUserIds = $students->pluck('user_id');
         $dailyAttendance = Attendance::whereDate('date', now()->toDateString())->whereIn('user_id', $studentUserIds)->get()->keyBy('user_id');
 
@@ -224,16 +231,12 @@ class TeacherController extends Controller
         return Inertia::render('Teacher/Approval', ['pendingRequests' => $pendingRequests]);
     }
 
-    // HALAMAN PREVIEW FILE
     public function previewFile(Request $request)
     {
-        $path = $request->query('path'); // Path relatif dari storage (misal: journals/abc.pdf)
+        $path = $request->query('path'); 
         
-        if (!$path) {
-            abort(404);
-        }
+        if (!$path) { abort(404); }
 
-        // 1. Cek Ekstensi Terlarang
         $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
         $forbidden = ['exe', 'bat', 'sh', 'php', 'js', 'sql'];
 
@@ -241,7 +244,6 @@ class TeacherController extends Controller
             abort(403, 'Tipe file ini dilarang untuk dibuka demi keamanan.');
         }
 
-        // 2. Generate Full URL
         $url = asset('storage/' . $path);
         $filename = basename($path);
 
