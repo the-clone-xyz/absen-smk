@@ -102,7 +102,7 @@ Route::post('/tugas', [TaskController::class, 'store'])->name('tasks.store');
     Route::post('/tugas/submission/{id}/grade', [TaskController::class, 'gradeSubmission'])->name('tasks.grade');
 
     // Show Detail Tugas (Opsional jika guru butuh view detail sendiri)
-    Route::get('/tugas/{task}', [TaskController::class, 'show'])->name('tasks.show'); 
+    Route::get('/tugas/{task}', [TaskController::class, 'show'])->name('teacher.tasks.show'); 
 });
 
 

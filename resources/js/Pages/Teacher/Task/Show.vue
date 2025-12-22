@@ -17,17 +17,13 @@ import GradingModal from "@/Pages/Teacher/Partials/GradingModal.vue";
 
 const props = defineProps({
     task: Object,
-    studentData: Array, // Data gabungan siswa + submission
+    studentData: Array,
 });
 
 const showGradingModal = ref(false);
 const selectedSubmission = ref(null);
 
-// Helper Buka Modal Nilai
 const openGrading = (student) => {
-    // Kita format datanya agar sesuai dengan GradingModal
-    // Jika siswa belum kumpul, kita buat submission dummy agar tetap bisa dinilai (opsional)
-    // Atau hanya izinkan nilai jika submission ada.
     if (!student.submission) {
         alert("Siswa ini belum mengumpulkan tugas.");
         return;
@@ -37,7 +33,7 @@ const openGrading = (student) => {
         task: props.task,
         submission: {
             ...student.submission,
-            student: { name: student.name }, // GradingModal butuh nama siswa
+            student: { name: student.name },
         },
     };
     showGradingModal.value = true;

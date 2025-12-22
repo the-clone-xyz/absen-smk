@@ -226,7 +226,7 @@ class TaskController extends Controller
                 'student_id' => $student->id
             ],
             [
-                'file_path' => $path, // Asumsi tabel submission masih pakai file_path
+                'file_path' => $path, 
                 'notes' => $request->notes,
                 'submitted_at' => now(),
             ]

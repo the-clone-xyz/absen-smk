@@ -165,7 +165,7 @@ const formatTime = (time) => time.substring(0, 5);
                             <Link
                                 v-for="task in tasks"
                                 :key="task.id"
-                                :href="route('student.task.show', task.id)"
+                                :href="route('student.tasks.show', task.id)"
                                 class="block bg-white border border-gray-200 rounded-lg p-4 hover:border-purple-400 hover:shadow-md transition group relative overflow-hidden"
                             >
                                 <div class="flex justify-between items-start">
