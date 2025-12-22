@@ -2,104 +2,128 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
-use App\Models\Student;
-use App\Models\Kelas; // Pastikan Model Kelas sudah ada
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\DB; 
-use Illuminate\Support\Facades\Redirect;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
+use App\Models\Attendance;
+use App\Models\Schedule;
+use App\Models\Task;
+use App\Models\TaskSubmission;
 
 class StudentController extends Controller
 {
-    // 1. HALAMAN DAFTAR SISWA
-    public function index(Request $request)
+    public function index()
     {
-       // Ambil data siswa + user + kelas
-        $query = Student::with(['user', 'kelas']);
-
-        // Fitur Pencarian (Search)
-        if ($request->search) {
-            $query->whereHas('user', function($q) use ($request) {
-                $q->where('name', 'like', '%'.$request->search.'%');
-            })->orWhere('nis', 'like', '%'.$request->search.'%');
+        $user = Auth::user();
+        
+        // Cek data siswa
+        if (!$user->student) {
+            return redirect('/')->with('error', 'Data siswa tidak ditemukan.');
         }
 
-        // Render ke file Vue yang baru
-        return Inertia::render('Admin/Students/Index', [
-            'students' => $query->latest()->paginate(10)->withQueryString(),
-            'filters' => $request->only(['search']),
-        ]);
-    }
-
-    // 2. HALAMAN FORM TAMBAH
-    public function create()
-    {
-        return Inertia::render('Admin/Students/Create', [
-            'classes' => Kelas::orderBy('name')->get() // Kirim data kelas untuk dropdown
-        ]);
-    }
-
-    // 3. PROSES SIMPAN (CREATE)
-    public function store(Request $request)
-    {
-       // 1. Validasi Input (GUNAKAN ARRAY AGAR LEBIH AMAN)
-        $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'nis' => ['required', 'numeric', 'unique:students,nis'],
-            'nisn' => ['nullable', 'numeric', 'unique:students,nisn'],
-            'pob' => ['required', 'string', 'max:50'],
-            'dob' => ['required', 'date'],
-            'phone' => ['nullable', 'string', 'max:20'],
-            'class_id' => ['required', 'exists:kelas,id'], // Pastikan tabelnya 'kelas'
-            
-            // Perbaikan di sini: Gunakan Array
-            'photo' => ['nullable', 'image', 'max:5120'], 
-        ]);
-
-        DB::transaction(function () use ($request) {
-            
-            // A. Handle Upload Foto
-            $avatarPath = null;
-            if ($request->hasFile('photo')) {
-                $avatarPath = $request->file('photo')->store('avatars', 'public');
-            }
-
-            // B. Buat Akun Login (User)
-            $user = User::create([
-                'name' => $request->name,
-                'email' => $request->nis . '@smk.sch.id', // Email otomatis
-                'password' => Hash::make($request->nis), // Password default = NIS
-                'role' => 'student',
-                'avatar' => $avatarPath, // Simpan path foto di sini
-            ]);
-
-            // C. Buat Biodata Lengkap (Student)
-            Student::create([
-                'user_id' => $user->id,
-                'class_id' => $request->class_id,
-                'nis' => $request->nis,
-                'nisn' => $request->nisn,
-                'pob' => $request->pob,
-                'dob' => $request->dob,
-                'phone' => $request->phone,
-            ]);
-        });
-
-        return Redirect::route('admin.students.index')->with('success', 'Data Siswa berhasil disimpan!');
-    }
-
-    // 4. HAPUS SISWA
-    public function destroy($id)
-    {
-        $student = Student::findOrFail($id);
-        $user = User::findOrFail($student->user_id);
+        $userId = $user->id;
         
-        // Hapus User (Otomatis menghapus Student karena cascade)
-        $user->delete(); 
+        // PERBAIKAN 1: Ambil ID Kelas dengan benar (class_id)
+        // Kita gunakan operator ?? untuk jaga-jaga jika namanya beda
+        $classId = $user->student->class_id ?? $user->student->kelas_id; 
 
-        return Redirect::route('admin.students.index')->with('success', 'Data siswa berhasil dihapus.');
+        // 1. Statistik Absensi (Gunakan 'user_id' sesuai tabel attendances Anda)
+        $stats = [
+            'hadir' => Attendance::where('user_id', $userId)->where('status', 'Hadir')->count(),
+            'sakit' => Attendance::where('user_id', $userId)->whereIn('status', ['Sakit', 'Izin'])->count(),
+            'total' => Attendance::where('user_id', $userId)->count(),
+        ];
+
+        // 2. Jadwal Hari Ini
+        // Menggunakan nama hari bahasa Indonesia (Senin, Selasa, dst)
+        $today = now()->locale('id')->isoFormat('dddd'); 
+        
+        $jadwal = [];
+        if ($classId) {
+            $jadwal = Schedule::with(['subject', 'teacher.user'])
+                        ->where('class_id', $classId)
+                        // PERBAIKAN 2: Gunakan kolom 'day' sesuai screenshot database
+                        ->where('day', $today) 
+                        ->orderBy('start_time')
+                        ->get();
+        }
+
+        // 3. Riwayat Absen
+        $riwayat = Attendance::where('user_id', $userId)
+                    ->get()
+                    ->mapWithKeys(function ($item) {
+                        return [$item->date => ['status' => $item->status]];
+                    });
+
+        // PERBAIKAN 3: Pastikan me-render ke Dashboard Siswa, BUKAN Admin
+        return Inertia::render('Student/Dashboard', [
+            'auth' => [
+                'user' => $user
+            ],
+            'statistik' => $stats,
+            'jadwal' => $jadwal,
+            'riwayatAbsen' => $riwayat
+        ]);
+    }
+
+    // --- FITUR KELAS & TUGAS (Biarkan Tetap Ada) ---
+
+    public function showClass($scheduleId)
+    {
+        $schedule = Schedule::with(['subject', 'teacher.user', 'kelas'])->findOrFail($scheduleId);
+        
+        // Ambil Tugas yang ada di kelas/mapel ini
+        // Pastikan menggunakan 'class_id'
+        $classId = $schedule->class_id ?? $schedule->kelas_id;
+
+        $tasks = Task::with(['submissions' => function($q) {
+            $q->where('student_id', Auth::user()->student->id);
+        }])
+        ->where('kelas_id', $classId) 
+        ->where('subject_id', $schedule->subject_id)
+        ->latest()
+        ->get();
+
+        return Inertia::render('Student/Classroom', [
+            'schedule' => $schedule,
+            'tasks' => $tasks
+        ]);
+    }
+
+    public function showTask($id)
+    {
+        $task = Task::with(['teacher.user', 'subject'])->findOrFail($id);
+        $submission = TaskSubmission::where('task_id', $id)
+                        ->where('student_id', Auth::user()->student->id)
+                        ->first();
+
+        return Inertia::render('Student/Task/Show', [
+            'task' => $task,
+            'submission' => $submission
+        ]);
+    }
+
+public function submitTask(Request $request, $id)
+    {
+        $request->validate([
+            'file' => 'required|file|max:10240',
+            'notes' => 'nullable|string'
+        ]);
+
+        $path = $request->file('file')->store('submissions', 'public');
+
+        TaskSubmission::updateOrCreate(
+            [
+                'task_id' => $id, 
+                'student_id' => Auth::user()->student->id
+            ],
+            [
+                'file_path' => $path,
+                'notes' => $request->notes,
+                // 'submitted_at' => now(), <--- HAPUS BARIS INI
+            ]
+        );
+
+        return back()->with('success', 'Tugas berhasil dikirim!');
     }
 }

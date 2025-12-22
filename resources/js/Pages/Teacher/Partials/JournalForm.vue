@@ -1,141 +1,183 @@
 <script setup>
+import { Link } from "@inertiajs/vue3"; // Penting: Import Link
 import {
     BookOpenIcon,
-    DocumentArrowUpIcon,
-    CheckCircleIcon,
-    PencilSquareIcon,
+    PaperClipIcon,
+    XMarkIcon,
+    ExclamationCircleIcon,
+    DocumentTextIcon,
 } from "@heroicons/vue/24/solid";
+import { ref, computed } from "vue";
 
 const props = defineProps({
-    form: Object, // Terima object form dari parent
-    isEditing: Boolean,
-    existingJournal: Object,
-    summary: Object, // Terima data rekap H/S/I/A
+    form: Object,
+    existingFile: String,
 });
 
-const submit = () => {
-    props.form.post(route("teacher.journal.store"), { preserveScroll: true });
+const emit = defineEmits(["file-error"]);
+const fileError = ref(null);
+
+const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    props.form.module = null;
+    fileError.value = null;
+    emit("file-error", false);
+
+    if (file) {
+        const maxSize = 10 * 1024 * 1024; // 10MB
+        if (file.size > maxSize) {
+            fileError.value = `Ukuran file terlalu besar! (Maks 10MB)`;
+            event.target.value = "";
+            emit("file-error", true);
+        } else {
+            props.form.module = file;
+        }
+    }
 };
+
+const removeFile = () => {
+    props.form.module = null;
+    fileError.value = null;
+    emit("file-error", false);
+};
+
+const hasExistingFile = computed(
+    () => !!props.existingFile && !props.form.module
+);
 </script>
 
 <template>
     <div
-        class="bg-white p-6 rounded-xl shadow-sm border border-blue-100 sticky top-24"
+        class="h-full flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
     >
-        <h3
-            class="font-bold text-gray-800 mb-4 flex items-center gap-2 pb-3 border-b"
-        >
-            <BookOpenIcon class="w-5 h-5 text-blue-600" /> Jurnal Mengajar
-        </h3>
+        <div class="px-5 py-4 border-b border-gray-100 bg-gray-50/50">
+            <h3 class="font-bold text-gray-800 flex items-center gap-2">
+                <BookOpenIcon class="w-5 h-5 text-indigo-600" /> Jurnal Materi
+            </h3>
+        </div>
 
-        <form @submit.prevent="submit">
-            <div class="mb-4">
+        <div class="p-5 space-y-5 flex-grow overflow-y-auto">
+            <div>
                 <label
                     class="block text-xs font-bold text-gray-500 uppercase mb-1"
-                    >Materi / Topik</label
                 >
+                    Topik Pembelajaran <span class="text-red-500">*</span>
+                </label>
                 <input
                     v-model="form.topic"
                     type="text"
-                    class="w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500 transition"
-                    placeholder="Contoh: Aljabar Linear"
+                    class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 text-sm"
                     required
                 />
             </div>
 
-            <div class="mb-4">
+            <div>
                 <label
                     class="block text-xs font-bold text-gray-500 uppercase mb-1"
-                    >Catatan Kelas</label
                 >
+                    Tujuan Pembelajaran <span class="text-red-500">*</span>
+                </label>
                 <textarea
                     v-model="form.notes"
-                    rows="3"
-                    class="w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500 transition"
-                    placeholder="Catatan kejadian..."
+                    rows="8"
+                    class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                    required
                 ></textarea>
             </div>
 
-            <div class="mb-6">
+            <div>
                 <label
                     class="block text-xs font-bold text-gray-500 uppercase mb-1"
-                    >Upload Modul (Opsional)</label
                 >
+                    Upload Bahan Ajar (Opsional)
+                </label>
+
                 <div
-                    class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:bg-gray-50 transition relative"
+                    v-if="hasExistingFile"
+                    class="mb-2 bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center justify-between transition hover:bg-blue-100"
+                >
+                    <div
+                        class="flex items-center gap-2 text-blue-700 overflow-hidden"
+                    >
+                        <DocumentTextIcon class="w-5 h-5 flex-shrink-0" />
+                        <div class="flex flex-col">
+                            <span
+                                class="text-[10px] text-blue-500 font-bold uppercase"
+                                >File Tersimpan</span
+                            >
+
+                            <Link
+                                :href="
+                                    route('viewer.show', { path: existingFile })
+                                "
+                                class="text-xs font-bold underline truncate hover:text-blue-900 cursor-pointer"
+                            >
+                                Buka / Baca File
+                            </Link>
+                        </div>
+                    </div>
+                    <span class="text-[10px] text-gray-400 italic"
+                        >Upload baru untuk mengganti</span
+                    >
+                </div>
+
+                <div
+                    class="border-2 border-dashed rounded-xl p-4 text-center transition relative group cursor-pointer"
+                    :class="
+                        fileError
+                            ? 'border-red-300 bg-red-50'
+                            : 'border-gray-300 hover:bg-indigo-50 hover:border-indigo-300'
+                    "
                 >
                     <input
+                        @change="handleFileUpload"
                         type="file"
-                        @input="form.module = $event.target.files[0]"
-                        class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                        accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.png"
+                        accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png"
+                        class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                        :disabled="form.processing"
                     />
+
                     <div
                         v-if="form.module"
-                        class="text-sm text-green-600 font-bold truncate"
+                        class="flex items-center justify-center gap-2 text-indigo-600 relative z-20"
                     >
-                        📂 {{ form.module.name }}
+                        <PaperClipIcon class="w-5 h-5" />
+                        <span
+                            class="text-sm font-bold truncate max-w-[150px]"
+                            >{{ form.module.name }}</span
+                        >
+                        <button
+                            @click.prevent.stop="removeFile"
+                            class="text-red-500 hover:bg-red-100 rounded-full p-1 transition"
+                        >
+                            <XMarkIcon class="w-4 h-4" />
+                        </button>
                     </div>
+
                     <div
-                        v-else
-                        class="text-gray-400 flex flex-col items-center"
+                        v-else-if="fileError"
+                        class="text-red-600 flex flex-col items-center justify-center relative z-20"
                     >
-                        <DocumentArrowUpIcon class="w-6 h-6 mb-1" />
-                        <span class="text-xs">Klik untuk upload PDF/Doc</span>
+                        <ExclamationCircleIcon class="w-6 h-6 mb-1" />
+                        <span class="text-xs font-bold">{{ fileError }}</span>
+                    </div>
+
+                    <div v-else class="relative z-0">
+                        <p
+                            class="text-sm text-gray-500 group-hover:text-indigo-600 font-medium"
+                        >
+                            {{
+                                hasExistingFile
+                                    ? "Klik untuk ganti file"
+                                    : "Klik untuk upload file"
+                            }}
+                        </p>
+                        <p class="text-[10px] text-gray-400">
+                            PDF, PPT, DOCX (Max 10MB)
+                        </p>
                     </div>
                 </div>
-                <div v-if="existingJournal?.module_path" class="mt-2 text-xs">
-                    <a
-                        :href="'/storage/' + existingJournal.module_path"
-                        target="_blank"
-                        class="text-blue-600 hover:underline flex items-center gap-1"
-                    >
-                        📄 Lihat Modul Saat Ini
-                    </a>
-                </div>
             </div>
-
-            <div
-                class="grid grid-cols-4 gap-2 mb-6 text-center text-xs font-bold"
-            >
-                <div
-                    class="bg-green-100 text-green-700 p-2 rounded border border-green-200"
-                >
-                    H: {{ summary.h }}
-                </div>
-                <div
-                    class="bg-blue-100 text-blue-700 p-2 rounded border border-blue-200"
-                >
-                    S: {{ summary.s }}
-                </div>
-                <div
-                    class="bg-yellow-100 text-yellow-700 p-2 rounded border border-yellow-200"
-                >
-                    I: {{ summary.i }}
-                </div>
-                <div
-                    class="bg-red-100 text-red-700 p-2 rounded border border-red-200"
-                >
-                    A: {{ summary.a }}
-                </div>
-            </div>
-
-            <button
-                type="submit"
-                :disabled="form.processing"
-                class="w-full text-white py-3 rounded-xl font-bold shadow-lg transition disabled:opacity-50 flex justify-center items-center gap-2"
-                :class="
-                    isEditing
-                        ? 'bg-yellow-500 hover:bg-yellow-600'
-                        : 'bg-green-600 hover:bg-green-700'
-                "
-            >
-                <component
-                    :is="isEditing ? PencilSquareIcon : CheckCircleIcon"
-                    class="w-5 h-5"
-                />
-                {{ isEditing ? "Update Jurnal" : "Simpan & Selesai" }}
-            </button>
-        </form>
+        </div>
     </div>
 </template>
