@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Task; // <--- SUDAH DITAMBAHKAN
+use App\Models\Task;
 use App\Models\Attendance;
 use App\Models\Schedule;
 use App\Models\Journal;
@@ -12,67 +12,82 @@ use Inertia\Inertia;
 use App\Traits\AttendanceTokenTrait;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class TeacherController extends Controller
 {
     use AttendanceTokenTrait;
 
-    // ==========================================
-    // 1. DASHBOARD GURU
-    // ==========================================
     public function index()
     {
-        $user = auth()->user();
+        $user = Auth::user();
         $teacher = $user->teacher;
+
+        if (!$teacher) {
+            return redirect()->route('login');
+        }
 
         Carbon::setLocale('id');
         $hariIni = Carbon::now()->isoFormat('dddd');
+        $tanggalIni = Carbon::now()->toDateString();
 
-        // A. JADWAL HARI INI
-        $jadwalHariIni = [];
-        if ($teacher) {
-            // PERBAIKAN: Ganti 'class' jadi 'kelas'
-            $jadwalHariIni = Schedule::with(['kelas', 'subject'])
-                ->where('teacher_id', $teacher->id)
-                ->where('day', $hariIni)
-                ->orderBy('start_time')
-                ->get()
-                ->map(function ($jadwal) {
-                    $jurnal = Journal::where('schedule_id', $jadwal->id)
-                                ->where('date', now()->toDateString())
-                                ->exists();
-                    $jadwal->is_done = $jurnal;
-                    return $jadwal;
-                });
-        }
+        // 1. JADWAL HARI INI
+        $jadwalHariIni = Schedule::with(['kelas', 'subject'])
+            ->where('teacher_id', $teacher->id)
+            ->where('day', $hariIni)
+            ->orderBy('start_time')
+            ->get()
+            ->map(function ($jadwal) use ($tanggalIni) {
+                $jadwal->is_done = Journal::where('schedule_id', $jadwal->id)
+                    ->where('date', $tanggalIni)
+                    ->exists();
+                return $jadwal;
+            });
 
-        // B. JADWAL KALENDER
-        // PERBAIKAN: Ganti 'class' jadi 'kelas'
+        // 2. JADWAL KALENDER
         $jadwalBulanan = Schedule::with(['kelas', 'subject'])
-                            ->where('teacher_id', $teacher->id)
-                            ->get()
-                            ->groupBy('day');
+            ->where('teacher_id', $teacher->id)
+            ->get()
+            ->groupBy('day');
 
-        // C. ABSENSI PENDING
-        // PERBAIKAN: Pastikan eager loading 'kelas' benar
-        $absensiGrouped = Attendance::with(['user.student.kelas'])
-                            ->whereDate('created_at', now()->toDateString())
-                            ->where('approval_status', 'pending')
-                            ->latest()
-                            ->get()
-                            ->groupBy(function($item) {
-                                // PERBAIKAN: Akses properti 'kelas'
-                                return $item->user->student->kelas->name ?? 'Lainnya';
-                            });
+        $classIds = Schedule::where('teacher_id', $teacher->id)
+                    ->pluck('class_id') 
+                    ->unique();
 
-        // D. STATISTIK
+        $studentUserIds = Student::whereIn('class_id', $classIds) 
+                    ->pluck('user_id');
+
+        $totalSiswa = $studentUserIds->count();
+
+        // C. Hitung Absensi Hari Ini
+        $attendanceStats = Attendance::whereIn('user_id', $studentUserIds)
+            ->where('date', $tanggalIni)
+            ->select('status', DB::raw('count(*) as total'))
+            ->groupBy('status')
+            ->pluck('total', 'status')
+            ->toArray();
+
         $stats = [
-            'hadir' => Attendance::whereDate('created_at', now()->toDateString())->where('status', 'Hadir')->count(),
-            'pending' => Attendance::whereDate('created_at', now()->toDateString())->where('approval_status', 'pending')->count(),
-            'total' => Attendance::whereDate('created_at', now()->toDateString())->count(),
+            'total_siswa' => $totalSiswa,
+            'hadir'       => $attendanceStats['Hadir'] ?? 0,
+            'izin'        => $attendanceStats['Izin'] ?? 0,
+            'sakit'       => $attendanceStats['Sakit'] ?? 0,
+            'alpha'       => $attendanceStats['Alpha'] ?? 0,
         ];
 
+        // 4. DATA APPROVAL (IZIN)
+        $absensiGrouped = Attendance::with(['user.student.kelas'])
+            ->whereIn('user_id', $studentUserIds)
+            ->where('date', $tanggalIni)
+            ->where('approval_status', 'pending')
+            ->latest()
+            ->get()
+            ->groupBy(function($item) {
+                return $item->user->student->kelas->name ?? 'Lainnya';
+            });
+
         return Inertia::render('Teacher/Dashboard', [
+            'auth' => ['user' => $user],
             'absensiGrouped' => $absensiGrouped,
             'statistik' => $stats,
             'jadwal' => $jadwalHariIni,
@@ -80,45 +95,34 @@ class TeacherController extends Controller
         ]);
     }
 
-    // ==========================================
-    // 2. MANAJEMEN KELAS (JURNAL & TUGAS)
-    // ==========================================
-    
     public function showClass($scheduleId)
     {
         $teacherId = auth()->user()->teacher->id;
         
-        // 1. Ambil Jadwal & Siswa
-        // PERBAIKAN: Ganti 'class' jadi 'kelas'
         $schedule = Schedule::with(['kelas.students.user', 'subject'])
                     ->where('id', $scheduleId)
                     ->where('teacher_id', $teacherId)
                     ->firstOrFail();
         
-        // 2. Cek Jurnal Hari Ini
         $existingJournal = Journal::with('attendances')
                 ->where('schedule_id', $scheduleId)
                 ->where('date', now()->toDateString())
                 ->first();
 
-        // 3. Ambil Data Tugas
-        // PERBAIKAN: Akses $schedule->kelas->id
         $tasks = Task::with('submissions.student')
-                ->where('kelas_id', $schedule->kelas->id)     
+                ->where('kelas_id', $schedule->kelas->id) // Asumsi tasks tetap pakai kelas_id (sesuai screenshot lama)
                 ->where('subject_id', $schedule->subject->id) 
                 ->latest()
                 ->get();
 
         return Inertia::render('Teacher/Classroom', [
             'schedule' => $schedule,
-            // PERBAIKAN: Akses $schedule->kelas
             'students' => $schedule->kelas->students,
             'existingJournal' => $existingJournal,
             'tasks' => $tasks
         ]);
     }
 
-    // SIMPAN JURNAL & ABSEN (SATU TOMBOL)
     public function storeJournal(Request $request)
     {
         $request->validate([
@@ -132,8 +136,6 @@ class TeacherController extends Controller
         $teacher = auth()->user()->teacher;
         
         DB::transaction(function () use ($request, $teacher) {
-            
-            // 1. Simpan/Update Jurnal
             $journalData = [
                 'schedule_id' => $request->schedule_id,
                 'teacher_id' => $teacher->id,
@@ -151,7 +153,6 @@ class TeacherController extends Controller
                 $journalData
             );
 
-            // 2. Simpan Log Absensi (JournalHistory)
             DB::table('journal_attendances')->where('journal_id', $journal->id)->delete();
             
             $journalLogs = [];
@@ -164,7 +165,6 @@ class TeacherController extends Controller
                     'updated_at' => now(),
                 ];
 
-                // 3. UPDATE ABSENSI HARIAN UTAMA
                 $student = Student::find($studentId);
                 if ($student) {
                     Attendance::updateOrCreate(
@@ -187,7 +187,7 @@ class TeacherController extends Controller
             DB::table('journal_attendances')->insert($journalLogs);
         });
         
-        return redirect()->route('teacher.dashboard')->with('success', 'Kelas selesai! Data tersimpan.');
+        return redirect()->route('teacher.dashboard')->with('success', 'Data tersimpan.');
     }
 
     public function getQrToken() { return response()->json(['token' => $this->generateAttendanceToken(0)]); }
@@ -200,9 +200,7 @@ class TeacherController extends Controller
     }
 
     public function getClassData($scheduleId) {
-        // PERBAIKAN: Ganti 'class' jadi 'kelas'
         $schedule = Schedule::with('kelas.students.user')->findOrFail($scheduleId);
-        // PERBAIKAN: Akses $schedule->kelas
         $students = $schedule->kelas->students;
         $studentUserIds = $students->pluck('user_id');
         $dailyAttendance = Attendance::whereDate('date', now()->toDateString())->whereIn('user_id', $studentUserIds)->get()->keyBy('user_id');
@@ -234,22 +232,18 @@ class TeacherController extends Controller
     public function previewFile(Request $request)
     {
         $path = $request->query('path'); 
-        
         if (!$path) { abort(404); }
 
         $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
         $forbidden = ['exe', 'bat', 'sh', 'php', 'js', 'sql'];
 
         if (in_array($extension, $forbidden)) {
-            abort(403, 'Tipe file ini dilarang untuk dibuka demi keamanan.');
+            abort(403, 'File tidak aman.');
         }
 
-        $url = asset('storage/' . $path);
-        $filename = basename($path);
-
         return Inertia::render('Teacher/FilePreview', [
-            'fileUrl' => $url,
-            'fileName' => $filename,
+            'fileUrl' => asset('storage/' . $path),
+            'fileName' => basename($path),
             'extension' => $extension
         ]);
     }
