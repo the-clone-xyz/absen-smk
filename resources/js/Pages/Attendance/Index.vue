@@ -22,7 +22,7 @@ const props = defineProps({
 const mode = ref("face");
 const coordinates = ref(null);
 const currentDistance = ref(0);
-const accuracy = ref(0); // Tingkat akurasi GPS (meter)
+const accuracy = ref(0);
 const locationError = ref(null);
 const videoRef = ref(null);
 const photoPreview = ref(null);
@@ -32,7 +32,7 @@ const scannerError = ref(null);
 // VARIABLE STREAM & GPS
 let html5QrCode = null;
 let currentStream = null;
-let geoWatcherId = null; // ID untuk pemantau GPS
+let geoWatcherId = null;
 
 const form = useForm({
     type: "face",
@@ -71,18 +71,17 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
 // --- REALTIME TRACKING ---
 const startLocationTracking = () => {
     if (navigator.geolocation) {
-        // Hapus watcher lama jika ada
         if (geoWatcherId) navigator.geolocation.clearWatch(geoWatcherId);
 
         locationError.value = "Sedang mencari satelit GPS...";
 
-        // Gunakan watchPosition agar lokasi terus di-update real-time
         geoWatcherId = navigator.geolocation.watchPosition(
             (position) => {
-                locationError.value = null; // Reset error jika berhasil
+                locationError.value = null;
                 coordinates.value = position.coords;
                 accuracy.value = Math.round(position.coords.accuracy);
 
+                // Update Form
                 form.latitude = position.coords.latitude;
                 form.longitude = position.coords.longitude;
 
@@ -98,21 +97,8 @@ const startLocationTracking = () => {
             },
             (error) => {
                 console.error(error);
-                switch (error.code) {
-                    case error.PERMISSION_DENIED:
-                        locationError.value = "Izin lokasi ditolak browser.";
-                        break;
-                    case error.POSITION_UNAVAILABLE:
-                        locationError.value = "Sinyal GPS tidak ditemukan.";
-                        break;
-                    case error.TIMEOUT:
-                        locationError.value = "Waktu habis mencari sinyal.";
-                        break;
-                    default:
-                        locationError.value = "Gagal mengambil lokasi.";
-                }
+                locationError.value = "Gagal mengambil lokasi GPS.";
             },
-            // Setting High Accuracy
             {
                 enableHighAccuracy: true,
                 timeout: 15000,
@@ -126,7 +112,7 @@ const startLocationTracking = () => {
 
 const isWithinRadius = computed(() => {
     const maxRadius = props.schoolSettings?.radius || 50;
-    return currentDistance.value <= maxRadius;
+    return currentDistance.value <= maxRadius + 20; // Toleransi frontend 20m
 });
 
 const startCamera = async () => {
@@ -134,7 +120,7 @@ const startCamera = async () => {
     await stopAllCameras();
     try {
         const stream = await navigator.mediaDevices.getUserMedia({
-            video: true,
+            video: { facingMode: "user" }, // Pakai kamera depan
         });
         currentStream = stream;
         if (videoRef.value) videoRef.value.srcObject = stream;
@@ -147,7 +133,12 @@ const takePhoto = () => {
     const canvas = document.createElement("canvas");
     canvas.width = videoRef.value.videoWidth;
     canvas.height = videoRef.value.videoHeight;
-    canvas.getContext("2d").drawImage(videoRef.value, 0, 0);
+    // Mirror effect
+    const ctx = canvas.getContext("2d");
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(videoRef.value, 0, 0);
+
     canvas.toBlob((blob) => {
         const file = new File([blob], "selfie.jpg", { type: "image/jpeg" });
         form.photo = file;
@@ -167,12 +158,13 @@ const startQRScanner = async () => {
     };
     html5QrCode
         .start(
-            { facingMode: "environment" },
+            { facingMode: "environment" }, // Kamera belakang
             config,
             onScanSuccess,
             onScanFailure
         )
         .catch(() => {
+            // Fallback kamera depan jika belakang gagal
             html5QrCode.start(
                 { facingMode: "user" },
                 config,
@@ -183,6 +175,7 @@ const startQRScanner = async () => {
 };
 
 const onScanSuccess = (decodedText) => {
+    // Mode QR: Langsung submit tanpa cek radius!
     stopAllCameras();
     qrResult.value = decodedText;
     form.qr_code = decodedText;
@@ -200,10 +193,11 @@ const switchMode = async (newMode) => {
     await stopAllCameras();
 
     if (newMode === "face") {
-        startLocationTracking(); // Nyalakan GPS lagi
+        // startLocationTracking(); // GPS sudah jalan terus
         setTimeout(startCamera, 500);
     } else {
-        if (geoWatcherId) navigator.geolocation.clearWatch(geoWatcherId); // Matikan GPS saat mode QR (hemat batre)
+        // PERBAIKAN: Jangan matikan GPS di sini, karena backend butuh data lat/long
+        // if (geoWatcherId) navigator.geolocation.clearWatch(geoWatcherId);
         startQRScanner();
     }
 };
@@ -213,6 +207,7 @@ const submitAbsen = () => {
         forceFormData: true,
         onSuccess: () => stopAllCameras(),
         onError: () => {
+            // Jika gagal di mode QR, nyalakan lagi scannernya
             if (mode.value === "qr") startQRScanner();
         },
     });
@@ -254,7 +249,8 @@ onBeforeUnmount(() => {
                             v-show="!photoPreview"
                             ref="videoRef"
                             autoplay
-                            class="w-full h-full object-cover"
+                            playsinline
+                            class="w-full h-full object-cover transform scale-x-[-1]"
                         ></video>
                         <img
                             v-if="photoPreview"
@@ -305,10 +301,18 @@ onBeforeUnmount(() => {
                         class="absolute inset-0 w-full h-full flex flex-col items-center justify-center"
                     >
                         <div id="reader" class="w-full h-full bg-black"></div>
+
+                        <div
+                            class="absolute inset-0 pointer-events-none border-[50px] border-black/50 z-10"
+                        ></div>
+                        <div
+                            class="absolute z-20 w-64 h-64 border-4 border-green-500 rounded-2xl animate-pulse"
+                        ></div>
+
                         <p
-                            class="absolute bottom-10 text-white/70 text-sm z-20 bg-black/30 px-3 py-1 rounded-full"
+                            class="absolute bottom-10 text-white font-bold text-sm z-20 bg-black/50 px-4 py-2 rounded-full backdrop-blur-sm"
                         >
-                            Arahkan QR Code ke dalam kotak
+                            Arahkan QR Code ke dalam kotak hijau
                         </p>
                     </div>
                 </div>
@@ -355,8 +359,8 @@ onBeforeUnmount(() => {
                             <p class="text-gray-500 text-sm mt-1">
                                 {{
                                     mode === "face"
-                                        ? "Sistem sedang memastikan Anda di sekolah."
-                                        : "Scan kode QR dari Admin."
+                                        ? "Sistem memastikan Anda berada di area sekolah."
+                                        : "Scan kode QR dinamis yang ditampilkan guru."
                                 }}
                             </p>
                         </div>
@@ -426,20 +430,32 @@ onBeforeUnmount(() => {
                             </div>
 
                             <p
-                                class="text-xs"
+                                class="text-xs font-bold"
                                 :class="
                                     isWithinRadius
-                                        ? 'text-green-600 font-bold'
+                                        ? 'text-green-600'
                                         : 'text-red-600'
                                 "
                             >
                                 {{
                                     isWithinRadius
-                                        ? "✅ Lokasi Sesuai"
-                                        : `⛔ Kejauhan: ${currentDistance}m (Max ${
+                                        ? "✅ Lokasi Sesuai (Dalam Radius)"
+                                        : `⛔ Kejauhan: ${currentDistance}m (Maks ${
                                               props.schoolSettings?.radius || 50
                                           }m)`
                                 }}
+                            </p>
+                        </div>
+
+                        <div
+                            v-else
+                            class="bg-blue-50 rounded-xl p-4 border border-blue-100 text-center"
+                        >
+                            <p class="text-blue-800 text-sm font-bold">
+                                Mode Cepat
+                            </p>
+                            <p class="text-blue-600 text-xs mt-1">
+                                Validasi lokasi dinonaktifkan untuk metode ini.
                             </p>
                         </div>
 
@@ -473,17 +489,25 @@ onBeforeUnmount(() => {
                                         {{
                                             form.processing
                                                 ? "Mengirim..."
-                                                : "Kirim"
+                                                : "Kirim Absen"
                                         }}
                                         <CheckCircleIcon class="w-5 h-5" />
                                     </button>
                                 </div>
                             </div>
+
                             <div v-else class="text-center">
+                                <div
+                                    v-if="form.processing"
+                                    class="text-sm font-bold text-green-600 animate-pulse"
+                                >
+                                    Memproses data...
+                                </div>
                                 <p
+                                    v-else
                                     class="text-sm text-gray-400 animate-pulse bg-gray-50 p-3 rounded-lg"
                                 >
-                                    Kamera aktif. Silakan scan...
+                                    Kamera aktif. Silakan scan QR...
                                 </p>
                             </div>
                         </div>
