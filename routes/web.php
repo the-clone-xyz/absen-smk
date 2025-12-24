@@ -1,20 +1,24 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\AttendanceController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\TeacherController; 
-use App\Http\Controllers\AdminController;
-use App\Http\Controllers\StudentController;
-use App\Http\Controllers\FileViewerController;
-use App\Http\Controllers\TaskController;
-use App\Http\Controllers\AdminStudentController;
-use App\Http\Controllers\AdminTeacherController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
-use App\Models\SystemSetting;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
+
+// Models
+use App\Models\SystemSetting;
+
+// Controllers
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\FileViewerController;
+use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\StudentController;
+use App\Http\Controllers\TeacherController;
+use App\Http\Controllers\TaskController;
+use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AdminStudentController;
+use App\Http\Controllers\AdminTeacherController;
 
 /*
 |--------------------------------------------------------------------------
@@ -22,145 +26,196 @@ use Illuminate\Support\Facades\Auth;
 |--------------------------------------------------------------------------
 */
 
+// --- HALAMAN DEPAN ---
 Route::get('/', function () {
     $setting = SystemSetting::first();
     return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
+        'canLogin'       => Route::has('login'),
+        'canRegister'    => Route::has('register'),
         'laravelVersion' => Application::VERSION,
-        'schoolName' => $setting ? $setting->school_name : 'SMK TAMANSISWA',
-        'phpVersion' => PHP_VERSION,
+        'schoolName'     => $setting ? $setting->school_name : 'SMK TAMANSISWA',
+        'phpVersion'     => PHP_VERSION,
     ]);
 });
 
-// --- ROUTE PENYELAMAT (FIX ERROR REDIRECT) ---
+// --- CENTRAL DASHBOARD REDIRECT ---
+// Mengarahkan user ke dashboard spesifik berdasarkan role
 Route::get('/dashboard', function () {
     $user = Auth::user();
-    if (!$user) return redirect('/login');
-    // Cek role untuk redirect ke dashboard yang benar
-    return redirect()->route($user->role . '.dashboard'); 
-})->middleware(['auth'])->name('dashboard');
+    if (!$user) return redirect()->route('login');
+    
+    // Pastikan role valid sebelum redirect
+    $role = $user->role ?? 'student'; 
+    return redirect()->route($role . '.dashboard');
+})->middleware(['auth', 'verified'])->name('dashboard');
 
 
 // =========================================================================
-// ZONA 1: SISWA (Akses Tugas & Absen)
+// ZONA 1: SISWA (Student)
 // =========================================================================
-Route::middleware(['auth', 'verified', 'role:student'])->prefix('siswa')->name('student.')->group(function () {
-    // Dashboard & Absen
-    Route::get('/dashboard', [StudentController::class, 'index'])->name('dashboard');
-    Route::get('/izin', [AttendanceController::class, 'izin'])->name('attendance.izin');
-    Route::get('/rekap', [AttendanceController::class, 'rekap'])->name('attendance.rekap');
-    Route::get('/kartu-pelajar', function () { return Inertia::render('Student/Card'); })->name('card');
+Route::middleware(['auth', 'verified', 'role:student'])
+    ->prefix('siswa')
+    ->name('student.')
+    ->group(function () {
+        
+        // Dashboard & Kartu
+        Route::get('/dashboard', [StudentController::class, 'index'])->name('dashboard');
+        Route::get('/kartu-pelajar', function () { return Inertia::render('Student/Card'); })->name('card');
 
-    // FITUR TUGAS SISWA
-    Route::get('/kelas/{scheduleId}', [StudentController::class, 'showClass'])->name('classroom.show');
-    
-    // Note: Nama route di sini akan menjadi 'student.tasks.show'
-    Route::get('/tugas/{id}', [StudentController::class, 'showTask'])->name('tasks.show'); 
-    Route::post('/tugas/{id}/submit', [StudentController::class, 'submitTask'])->name('tasks.submit'); 
-});
+        // Absensi (Izin & Rekap)
+        Route::controller(AttendanceController::class)->group(function () {
+            Route::get('/izin', 'izin')->name('attendance.izin');
+            Route::get('/rekap', 'rekap')->name('attendance.rekap');
+        });
 
+        // Kelas & Tugas
+        Route::get('/kelas/{scheduleId}', [StudentController::class, 'showClass'])
+            ->whereNumber('scheduleId')
+            ->name('classroom.show');
 
-// =========================================================================
-// ZONA 2: GURU (Manajemen Kelas & Tugas)
-// =========================================================================
-
-// GRUP A: Fitur Guru Umum (Dashboard, Absen, Jurnal)
-// Nama route otomatis diawali 'teacher.' (contoh: teacher.dashboard)
-Route::middleware(['auth', 'verified', 'role:teacher'])->prefix('guru')->name('teacher.')->group(function () {
-    Route::get('/dashboard', [TeacherController::class, 'index'])->name('dashboard');
-    
-    // Absensi & QR
-    Route::patch('/absensi/{id}/approve', [TeacherController::class, 'updateStatus'])->name('attendance.approve');
-    Route::get('/qr-token', [TeacherController::class, 'getQrToken'])->name('qr.token'); 
-    Route::get('/approval/izin', [TeacherController::class, 'showPending'])->name('approval.index');
-    
-    // Manajemen Kelas (Jurnal)
-    Route::get('/kelas/{scheduleId}', [TeacherController::class, 'showClass'])->name('classroom.show');
-    Route::post('/jurnal', [TeacherController::class, 'storeJournal'])->name('journal.store');
-    Route::get('/class-qr-token/{scheduleId}', [TeacherController::class, 'getClassQrToken'])->name('classroom.qr_token');
-    Route::get('/class-data/{scheduleId}', [TeacherController::class, 'getClassData'])->name('classroom.data');
-});
-
-// GRUP B: Manajemen Tugas (TaskController)
-// PENTING: Grup ini TIDAK menggunakan name('teacher.') agar nama routenya sesuai dengan Vue
-// URL tetap diawali /guru/tugas... tapi nama route jadi 'tasks.store' (bukan teacher.tasks.store)
-Route::middleware(['auth', 'verified', 'role:teacher'])->prefix('guru')->group(function () {
-    
-    // Store Tugas Baru
-    
-Route::post('/tugas', [TaskController::class, 'store'])->name('tasks.store');
-    Route::post('/tugas/{id}/update', [TaskController::class, 'update'])->name('tasks.update');
-
-    // Update Tugas (Sesuai Vue yang pakai POST)
-    Route::post('/tugas/{id}/update', [TaskController::class, 'update'])->name('tasks.update'); 
-    
-    // Hapus Tugas
-    Route::delete('/tugas/{id}', [TaskController::class, 'destroy'])->name('tasks.destroy');
-    
-    // Penilaian
-    Route::post('/tugas/submission/{id}/grade', [TaskController::class, 'gradeSubmission'])->name('tasks.grade');
-
-    // Show Detail Tugas (Opsional jika guru butuh view detail sendiri)
-    Route::get('/tugas/{task}', [TaskController::class, 'show'])->name('teacher.tasks.show'); 
-});
-
-
-// =========================================================================
-// ZONA 3: ADMIN
-// =========================================================================
-Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
-    Route::get('/dashboard', [AdminController::class, 'index'])->name('dashboard');
-    Route::get('/users', [AdminController::class, 'userManagement'])->name('users.index');
-    Route::patch('/users/{user}/update-role', [AdminController::class, 'updateRole'])->name('users.updateRole');
-    
-    Route::prefix('subjects')->name('subjects.')->group(function () {
-        Route::get('/', [AdminController::class, 'subjectManagement'])->name('index');
-        Route::post('/', [AdminController::class, 'storeSubject'])->name('store');
-        Route::patch('/{subject}', [AdminController::class, 'updateSubject'])->name('update');
-        Route::delete('/{subject}', [AdminController::class, 'destroySubject'])->name('destroy');
-    });
-    
-    Route::prefix('classes')->name('classes.')->group(function () {
-        Route::get('/', [AdminController::class, 'classManagement'])->name('index');
-        Route::post('/', [AdminController::class, 'storeKelas'])->name('store');
-        Route::patch('/{kelas}', [AdminController::class, 'updateKelas'])->name('update');
-        Route::delete('/{kelas}', [AdminController::class, 'destroyKelas'])->name('destroy');
+        // Tugas (Detail & Submit)
+        Route::get('/tugas/{id}', [StudentController::class, 'showTask'])
+            ->whereNumber('id')
+            ->name('tasks.show');
+            
+        // Security: Batasi submit tugas max 10x per menit untuk mencegah spam
+        Route::post('/tugas/{id}/submit', [StudentController::class, 'submitTask'])
+            ->middleware('throttle:10,1')
+            ->whereNumber('id')
+            ->name('tasks.submit');
     });
 
-    Route::get('/reports/attendance', [AdminController::class, 'attendanceReport'])->name('attendance.report');
-    Route::get('/rekap-guru', [AttendanceController::class, 'rekapGuru'])->name('rekap.guru');
 
-    // Resource Controllers
-    Route::resource('teachers', AdminTeacherController::class)->names('teachers');
-    Route::resource('students', AdminStudentController::class);
-    
-    Route::prefix('schedules')->name('schedules.')->group(function () {
-        Route::get('/', [AdminController::class, 'scheduleManagement'])->name('index');
-        Route::post('/', [AdminController::class, 'storeSchedule'])->name('store');
-        Route::delete('/{id}', [AdminController::class, 'destroySchedule'])->name('destroy');
+// =========================================================================
+// ZONA 2: GURU (Teacher)
+// =========================================================================
+Route::middleware(['auth', 'verified', 'role:teacher'])
+    ->prefix('guru')
+    ->group(function () {
+
+        // --- GROUP A: Namespace 'teacher.' (Dashboard & Manajemen Umum) ---
+        Route::name('teacher.')->group(function () {
+            Route::get('/dashboard', [TeacherController::class, 'index'])->name('dashboard');
+            
+            // Absensi Approval & Token
+            Route::get('/qr-token', [TeacherController::class, 'getQrToken'])->name('qr.token');
+            Route::get('/approval/izin', [TeacherController::class, 'showPending'])->name('approval.index');
+            Route::patch('/absensi/{id}/approve', [TeacherController::class, 'updateStatus'])
+                ->whereNumber('id')
+                ->name('attendance.approve');
+
+            // Manajemen Kelas (Jurnal)
+            Route::get('/kelas/{scheduleId}', [TeacherController::class, 'showClass'])
+                ->whereNumber('scheduleId')
+                ->name('classroom.show');
+            
+            Route::post('/jurnal', [TeacherController::class, 'storeJournal'])->name('journal.store');
+            
+            // Data Realtime Kelas
+            Route::get('/class-qr-token/{scheduleId}', [TeacherController::class, 'getClassQrToken'])->name('classroom.qr_token');
+            Route::get('/class-data/{scheduleId}', [TeacherController::class, 'getClassData'])->name('classroom.data');
+        });
+
+        // --- GROUP B: Namespace Global (Manajemen Tugas) ---
+        // Penamaan route disesuaikan agar frontend tidak perlu ubah kode
+        Route::controller(TaskController::class)->group(function () {
+            // Read
+            Route::get('/tugas/{task}', 'show')->whereNumber('task')->name('teacher.tasks.show');
+            
+            // Create
+            Route::post('/tugas', 'store')->name('tasks.store');
+            
+            // Update & Delete
+            Route::post('/tugas/{id}/update', 'update')->whereNumber('id')->name('tasks.update');
+            Route::delete('/tugas/{id}', 'destroy')->whereNumber('id')->name('tasks.destroy');
+            
+            // Grading
+            Route::post('/tugas/submission/{id}/grade', 'gradeSubmission')
+                ->whereNumber('id')
+                ->name('tasks.grade');
+        });
     });
-    
-    Route::get('/settings/qr-generator', [AdminController::class, 'qrGenerator'])->name('settings.qr');
-    Route::get('/settings/get-qr-token', [AdminController::class, 'getQrToken'])->name('settings.get_qr');
-    Route::get('/settings/attendance', [AdminController::class, 'attendanceSettings'])->name('settings.attendance');
-    Route::patch('/settings/attendance', [AdminController::class, 'updateSettings'])->name('settings.update');
-});
 
 
 // =========================================================================
-// ZONA UMUM
+// ZONA 3: ADMIN (Administrator)
 // =========================================================================
-Route::middleware('auth')->group(function () {
-    Route::get('/absen', [AttendanceController::class, 'index'])->name('attendance.index');
-    Route::post('/absen', [AttendanceController::class, 'store'])->name('attendance.store');
+Route::middleware(['auth', 'verified', 'role:admin'])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        
+        Route::get('/dashboard', [AdminController::class, 'index'])->name('dashboard');
+
+        // Manajemen User & Role
+        Route::get('/users', [AdminController::class, 'userManagement'])->name('users.index');
+        Route::patch('/users/{user}/update-role', [AdminController::class, 'updateRole'])->name('users.updateRole');
+
+        // Resource Controllers (Otomatis index, create, store, edit, update, destroy)
+        Route::resource('teachers', AdminTeacherController::class);
+        Route::resource('students', AdminStudentController::class);
+
+        // Manajemen Akademik (Subject, Class, Schedule)
+        Route::prefix('subjects')->name('subjects.')->controller(AdminController::class)->group(function () {
+            Route::get('/', 'subjectManagement')->name('index');
+            Route::post('/', 'storeSubject')->name('store');
+            Route::patch('/{subject}', 'updateSubject')->name('update');
+            Route::delete('/{subject}', 'destroySubject')->name('destroy');
+        });
+
+        Route::prefix('classes')->name('classes.')->controller(AdminController::class)->group(function () {
+            Route::get('/', 'classManagement')->name('index');
+            Route::post('/', 'storeKelas')->name('store');
+            Route::patch('/{kelas}', 'updateKelas')->name('update');
+            Route::delete('/{kelas}', 'destroyKelas')->name('destroy');
+        });
+
+        Route::prefix('schedules')->name('schedules.')->controller(AdminController::class)->group(function () {
+            Route::get('/', 'scheduleManagement')->name('index');
+            Route::post('/', 'storeSchedule')->name('store');
+            Route::delete('/{id}', 'destroySchedule')->whereNumber('id')->name('destroy');
+        });
+
+        // Laporan
+        Route::controller(AdminController::class)->group(function() {
+            Route::get('/reports/attendance', 'attendanceReport')->name('attendance.report');
+            Route::get('/rekap-guru', 'rekapGuru')->name('rekap.guru');
+        });
+
+        // Pengaturan Sistem & QR
+        Route::prefix('settings')->name('settings.')->controller(AdminController::class)->group(function () {
+            Route::get('/qr-generator', 'qrGenerator')->name('qr');
+            Route::get('/get-qr-token', 'getQrToken')->name('get_qr');
+            Route::get('/attendance', 'attendanceSettings')->name('attendance');
+            Route::patch('/attendance', 'updateSettings')->name('update');
+        });
+    });
+
+
+// =========================================================================
+// ZONA UMUM (User Login: Guru/Siswa/Admin)
+// =========================================================================
+Route::middleware(['auth', 'verified'])->group(function () {
     
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.delete');
-    
-    Route::get('/viewer', [FileViewerController::class, 'show'])->name('viewer.show');
-    Route::get('/viewer/download', [FileViewerController::class, 'download'])->name('viewer.download');
+    // --- FITUR SCAN ABSENSI (CRITICAL) ---
+    // Security: Throttle 6 request per menit untuk mencegah spam scan
+    Route::controller(AttendanceController::class)->middleware('throttle:6,1')->group(function () {
+        Route::get('/absen', 'index')->name('attendance.index');
+        Route::post('/absen', 'store')->name('attendance.store');
+    });
+
+    // Profile Management
+    Route::controller(ProfileController::class)->group(function () {
+        Route::get('/profile', 'edit')->name('profile.edit');
+        Route::patch('/profile', 'update')->name('profile.update');
+        Route::delete('/profile', 'destroy')->name('profile.delete');
+    });
+
+    // File Viewer (Secure Preview)
+    Route::controller(FileViewerController::class)->group(function () {
+        Route::get('/viewer', 'show')->name('viewer.show');
+        Route::get('/viewer/download', 'download')->name('viewer.download');
+    });
 });
 
 require __DIR__.'/auth.php';
