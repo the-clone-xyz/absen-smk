@@ -1,10 +1,17 @@
 <script setup>
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
-import { Head, useForm, Link } from "@inertiajs/vue3";
+import { Head, Link, useForm } from "@inertiajs/vue3";
 import {
+    UserIcon,
+    AcademicCapIcon,
+    IdentificationIcon,
     ArrowLeftIcon,
-    UserCircleIcon,
+    CheckCircleIcon,
     CameraIcon,
+    PhoneIcon,
+    MapPinIcon,
+    CalendarDaysIcon,
+    InformationCircleIcon, // Icon baru untuk info akun
 } from "@heroicons/vue/24/solid";
 import { ref } from "vue";
 
@@ -13,20 +20,21 @@ const props = defineProps({
 });
 
 const photoPreview = ref(null);
+const photoInput = ref(null);
 
 const form = useForm({
     name: "",
     nis: "",
     nisn: "",
-    class_id: "",
+    class_id: null,
+    gender: "L",
     pob: "",
     dob: "",
     phone: "",
     address: "",
-    photo: null, // Untuk file gambar
+    photo: null,
 });
 
-// Handle Preview Foto
 const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (file) {
@@ -35,274 +43,460 @@ const handleFileUpload = (event) => {
     }
 };
 
+const selectNewPhoto = () => {
+    photoInput.value.click();
+};
+
 const submit = () => {
-    form.post(route("admin.students.store"));
+    form.post(route("admin.students.store"), {
+        onSuccess: () => {
+            // Reset form jika perlu
+        },
+    });
 };
 </script>
 
 <template>
-    <Head title="Tambah Siswa" />
+    <Head title="Tambah Siswa Baru" />
 
     <AuthenticatedLayout>
         <template #header>
             <div class="flex items-center gap-4">
                 <Link
                     :href="route('admin.students.index')"
-                    class="text-gray-500 hover:text-gray-700 transition"
+                    class="p-2.5 bg-white rounded-xl shadow-sm border border-gray-200 hover:bg-gray-50 transition text-gray-500"
                 >
-                    <ArrowLeftIcon class="w-6 h-6" />
+                    <ArrowLeftIcon class="w-5 h-5" />
                 </Link>
-                <h2 class="font-bold text-xl text-gray-800">
-                    Input Data Siswa
-                </h2>
+                <div>
+                    <h2 class="font-bold text-2xl text-gray-800 leading-tight">
+                        Input Data Siswa
+                    </h2>
+                    <p class="text-sm text-gray-500">
+                        Tambahkan siswa baru ke dalam sistem.
+                    </p>
+                </div>
             </div>
         </template>
 
-        <div class="py-8 px-4 sm:px-6 lg:px-8">
-            <div class="max-w-4xl mx-auto">
+        <div class="py-10 px-4 sm:px-6 lg:px-8 bg-gray-50/50 min-h-screen">
+            <div class="max-w-6xl mx-auto">
                 <form
                     @submit.prevent="submit"
-                    class="grid grid-cols-1 md:grid-cols-3 gap-6"
+                    class="grid grid-cols-1 lg:grid-cols-3 gap-8"
                 >
-                    <div class="space-y-6">
+                    <div class="lg:col-span-1 space-y-6">
                         <div
-                            class="bg-white p-6 rounded-xl shadow border border-gray-100 flex flex-col items-center text-center"
+                            class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 flex flex-col items-center text-center relative overflow-hidden"
                         >
-                            <div class="relative group cursor-pointer">
+                            <div
+                                class="absolute top-0 left-0 w-full h-24 bg-gradient-to-r from-blue-500 to-indigo-600"
+                            ></div>
+
+                            <div
+                                class="relative mt-4 group cursor-pointer"
+                                @click="selectNewPhoto"
+                            >
                                 <div
-                                    class="w-40 h-40 rounded-full overflow-hidden border-4 border-gray-200 shadow-inner bg-gray-50"
+                                    class="w-40 h-40 rounded-full overflow-hidden border-[6px] border-white shadow-xl bg-gray-200 relative z-10"
                                 >
                                     <img
                                         v-if="photoPreview"
                                         :src="photoPreview"
                                         class="w-full h-full object-cover"
                                     />
-                                    <UserCircleIcon
+                                    <div
                                         v-else
-                                        class="w-full h-full text-gray-300"
-                                    />
-                                </div>
-                                <label
-                                    class="absolute inset-0 bg-black/50 rounded-full flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition text-white font-bold cursor-pointer"
-                                >
-                                    <CameraIcon class="w-8 h-8 mb-1" />
-                                    Upload Foto
-                                    <input
-                                        type="file"
-                                        class="hidden"
-                                        accept="image/*"
-                                        @change="handleFileUpload"
-                                    />
-                                </label>
-                            </div>
-                            <p class="text-xs text-gray-500 mt-3">
-                                Format JPG/PNG. Max 5MB.
-                            </p>
-                            <p
-                                class="text-red-500 text-xs mt-1"
-                                v-if="form.errors.photo"
-                            >
-                                {{ form.errors.photo }}
-                            </p>
-                        </div>
-
-                        <div
-                            class="bg-white p-6 rounded-xl shadow border border-gray-100 space-y-4"
-                        >
-                            <h3 class="font-bold text-gray-800 border-b pb-2">
-                                Data Akademik
-                            </h3>
-
-                            <div>
-                                <label
-                                    class="block text-sm font-medium text-gray-700 mb-1"
-                                    >NIS (Wajib)</label
-                                >
-                                <input
-                                    v-model="form.nis"
-                                    type="number"
-                                    class="w-full rounded-lg border-gray-300 focus:ring-blue-500"
-                                    placeholder="2023xxx"
-                                    required
-                                />
-                                <div
-                                    v-if="form.errors.nis"
-                                    class="text-red-500 text-xs mt-1"
-                                >
-                                    {{ form.errors.nis }}
-                                </div>
-                            </div>
-
-                            <div>
-                                <label
-                                    class="block text-sm font-medium text-gray-700 mb-1"
-                                    >NISN (Opsional)</label
-                                >
-                                <input
-                                    v-model="form.nisn"
-                                    type="number"
-                                    class="w-full rounded-lg border-gray-300"
-                                    placeholder="0012xxx"
-                                />
-                            </div>
-
-                            <div>
-                                <label
-                                    class="block text-sm font-medium text-gray-700 mb-1"
-                                    >Kelas</label
-                                >
-                                <select
-                                    v-model="form.class_id"
-                                    class="w-full rounded-lg border-gray-300"
-                                    required
-                                >
-                                    <option value="" disabled>
-                                        -- Pilih Kelas --
-                                    </option>
-                                    <option
-                                        v-for="kelas in classes"
-                                        :key="kelas.id"
-                                        :value="kelas.id"
+                                        class="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400"
                                     >
-                                        {{ kelas.name }}
-                                    </option>
-                                </select>
-                                <div
-                                    v-if="form.errors.class_id"
-                                    class="text-red-500 text-xs mt-1"
-                                >
-                                    {{ form.errors.class_id }}
+                                        <CameraIcon class="w-16 h-16" />
+                                    </div>
                                 </div>
+
+                                <div
+                                    class="absolute inset-0 z-20 rounded-full flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-sm"
+                                >
+                                    <CameraIcon
+                                        class="w-8 h-8 text-white drop-shadow-md"
+                                    />
+                                </div>
+                            </div>
+
+                            <input
+                                ref="photoInput"
+                                type="file"
+                                class="hidden"
+                                accept="image/*"
+                                @change="handleFileUpload"
+                            />
+
+                            <div class="mt-6">
+                                <h3 class="font-bold text-gray-800">
+                                    Foto Profil
+                                </h3>
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Format JPG/PNG. Maksimal 5MB.
+                                </p>
+                                <p
+                                    class="text-red-500 text-xs mt-2"
+                                    v-if="form.errors.photo"
+                                >
+                                    {{ form.errors.photo }}
+                                </p>
                             </div>
                         </div>
                     </div>
 
-                    <div class="md:col-span-2">
+                    <div class="lg:col-span-2 space-y-8">
                         <div
-                            class="bg-white p-6 rounded-xl shadow border border-gray-100 h-full"
+                            class="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 md:p-8"
                         >
-                            <h3
-                                class="font-bold text-gray-800 border-b pb-2 mb-4"
+                            <div
+                                class="flex items-center gap-4 mb-6 pb-4 border-b border-gray-100"
                             >
-                                Biodata Lengkap
-                            </h3>
+                                <div
+                                    class="p-3 bg-blue-50 text-blue-600 rounded-xl"
+                                >
+                                    <UserIcon class="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-bold text-gray-800">
+                                        Informasi Dasar
+                                    </h3>
+                                    <p class="text-sm text-gray-500">
+                                        Nama lengkap siswa.
+                                    </p>
+                                </div>
+                            </div>
 
-                            <div class="space-y-4">
+                            <div>
+                                <label
+                                    class="block text-sm font-bold text-gray-700 mb-2"
+                                    >Nama Lengkap</label
+                                >
+                                <input
+                                    v-model="form.name"
+                                    type="text"
+                                    class="w-full py-3 px-4 rounded-xl border-gray-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-gray-800"
+                                    placeholder="Masukkan Nama Siswa"
+                                />
+                                <p
+                                    class="text-red-500 text-xs mt-1"
+                                    v-if="form.errors.name"
+                                >
+                                    {{ form.errors.name }}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div
+                            class="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 md:p-8"
+                        >
+                            <div
+                                class="flex items-center gap-4 mb-6 pb-4 border-b border-gray-100"
+                            >
+                                <div
+                                    class="p-3 bg-green-50 text-green-600 rounded-xl"
+                                >
+                                    <AcademicCapIcon class="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-bold text-gray-800">
+                                        Data Akademik
+                                    </h3>
+                                    <p class="text-sm text-gray-500">
+                                        Nomor induk dan kelas.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
                                     <label
-                                        class="block text-sm font-medium text-gray-700 mb-1"
-                                        >Nama Lengkap</label
+                                        class="block text-sm font-bold text-gray-700 mb-2"
+                                        >NIS (Wajib)</label
                                     >
                                     <input
-                                        v-model="form.name"
-                                        type="text"
-                                        class="w-full rounded-lg border-gray-300 focus:ring-blue-500"
-                                        placeholder="Nama Sesuai Ijazah"
-                                        required
+                                        v-model="form.nis"
+                                        type="number"
+                                        class="w-full py-3 px-4 rounded-xl border-gray-200 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all"
+                                        placeholder="Contoh: 2023xxx"
                                     />
-                                    <div
-                                        v-if="form.errors.name"
+                                    <p
                                         class="text-red-500 text-xs mt-1"
+                                        v-if="form.errors.nis"
                                     >
-                                        {{ form.errors.name }}
-                                    </div>
+                                        {{ form.errors.nis }}
+                                    </p>
                                 </div>
-
-                                <div
-                                    class="grid grid-cols-1 sm:grid-cols-2 gap-4"
-                                >
-                                    <div>
-                                        <label
-                                            class="block text-sm font-medium text-gray-700 mb-1"
-                                            >Tempat Lahir</label
+                                <div>
+                                    <label
+                                        class="block text-sm font-bold text-gray-700 mb-2"
+                                        >NISN (Opsional)</label
+                                    >
+                                    <input
+                                        v-model="form.nisn"
+                                        type="number"
+                                        class="w-full py-3 px-4 rounded-xl border-gray-200 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all"
+                                    />
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label
+                                        class="block text-sm font-bold text-gray-700 mb-2"
+                                        >Kelas</label
+                                    >
+                                    <div class="relative">
+                                        <select
+                                            v-model="form.class_id"
+                                            class="w-full py-3 px-4 rounded-xl border-gray-200 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all appearance-none bg-white"
                                         >
+                                            <option :value="null">
+                                                -- Pilih Kelas --
+                                            </option>
+                                            <option
+                                                v-for="cls in classes"
+                                                :key="cls.id"
+                                                :value="cls.id"
+                                            >
+                                                {{ cls.name }}
+                                            </option>
+                                        </select>
+                                        <div
+                                            class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none"
+                                        >
+                                            <svg
+                                                class="h-4 w-4 text-gray-500"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                stroke="currentColor"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M19 9l-7 7-7-7"
+                                                />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    <p
+                                        class="text-red-500 text-xs mt-1"
+                                        v-if="form.errors.class_id"
+                                    >
+                                        {{ form.errors.class_id }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div
+                            class="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 md:p-8"
+                        >
+                            <div
+                                class="flex items-center gap-4 mb-6 pb-4 border-b border-gray-100"
+                            >
+                                <div
+                                    class="p-3 bg-purple-50 text-purple-600 rounded-xl"
+                                >
+                                    <IdentificationIcon class="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-bold text-gray-800">
+                                        Biodata Lengkap
+                                    </h3>
+                                    <p class="text-sm text-gray-500">
+                                        Data pribadi siswa.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div
+                                class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6"
+                            >
+                                <div>
+                                    <label
+                                        class="block text-sm font-bold text-gray-700 mb-2"
+                                        >Tempat Lahir</label
+                                    >
+                                    <div class="relative">
+                                        <div
+                                            class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
+                                        >
+                                            <MapPinIcon
+                                                class="h-5 w-5 text-gray-400"
+                                            />
+                                        </div>
                                         <input
                                             v-model="form.pob"
                                             type="text"
-                                            class="w-full rounded-lg border-gray-300"
-                                            placeholder="Contoh: Jakarta"
-                                            required
+                                            class="w-full py-3 pl-10 pr-4 rounded-xl border-gray-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
                                         />
                                     </div>
-                                    <div>
-                                        <label
-                                            class="block text-sm font-medium text-gray-700 mb-1"
-                                            >Tanggal Lahir</label
+                                </div>
+                                <div>
+                                    <label
+                                        class="block text-sm font-bold text-gray-700 mb-2"
+                                        >Tanggal Lahir</label
+                                    >
+                                    <div class="relative">
+                                        <div
+                                            class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
                                         >
+                                            <CalendarDaysIcon
+                                                class="h-5 w-5 text-gray-400"
+                                            />
+                                        </div>
                                         <input
                                             v-model="form.dob"
                                             type="date"
-                                            class="w-full rounded-lg border-gray-300"
-                                            required
+                                            class="w-full py-3 pl-10 pr-4 rounded-xl border-gray-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
                                         />
                                     </div>
                                 </div>
+                            </div>
 
-                                <div>
-                                    <label
-                                        class="block text-sm font-medium text-gray-700 mb-1"
-                                        >Nomor WhatsApp (Aktif)</label
-                                    >
-                                    <input
-                                        v-model="form.phone"
-                                        type="text"
-                                        class="w-full rounded-lg border-gray-300"
-                                        placeholder="0812xxxx"
-                                    />
-                                </div>
-
-                                <div
-                                    class="bg-blue-50 p-4 rounded-lg text-sm text-blue-800 mt-6"
+                            <div class="mb-6">
+                                <label
+                                    class="block text-sm font-bold text-gray-700 mb-2"
+                                    >Jenis Kelamin</label
                                 >
-                                    <p
-                                        class="font-bold flex items-center gap-2"
+                                <div class="relative">
+                                    <select
+                                        v-model="form.gender"
+                                        class="w-full py-3 px-4 rounded-xl border-gray-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all appearance-none bg-white"
+                                    >
+                                        <option value="L">Laki-laki</option>
+                                        <option value="P">Perempuan</option>
+                                    </select>
+                                    <div
+                                        class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none"
                                     >
                                         <svg
-                                            class="w-5 h-5"
+                                            class="h-4 w-4 text-gray-500"
                                             fill="none"
-                                            stroke="currentColor"
                                             viewBox="0 0 24 24"
+                                            stroke="currentColor"
                                         >
                                             <path
                                                 stroke-linecap="round"
                                                 stroke-linejoin="round"
                                                 stroke-width="2"
-                                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                                            ></path>
+                                                d="M19 9l-7 7-7-7"
+                                            />
                                         </svg>
-                                        Informasi Akun Otomatis
-                                    </p>
-                                    <ul class="list-disc ml-6 mt-2 space-y-1">
-                                        <li>
-                                            Username / Email:
-                                            <span class="font-mono font-bold">{{
-                                                form.nis
-                                                    ? form.nis + "@smk.sch.id"
-                                                    : "..."
-                                            }}</span>
-                                        </li>
-                                        <li>
-                                            Password Default:
-                                            <span class="font-mono font-bold">{{
-                                                form.nis || "..."
-                                            }}</span>
-                                        </li>
-                                    </ul>
+                                    </div>
+                                </div>
+                                <p
+                                    class="text-red-500 text-xs mt-1"
+                                    v-if="form.errors.gender"
+                                >
+                                    {{ form.errors.gender }}
+                                </p>
+                            </div>
+
+                            <div class="mb-6">
+                                <label
+                                    class="block text-sm font-bold text-gray-700 mb-2"
+                                    >No. HP / WhatsApp</label
+                                >
+                                <div class="relative">
+                                    <div
+                                        class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
+                                    >
+                                        <PhoneIcon
+                                            class="h-5 w-5 text-gray-400"
+                                        />
+                                    </div>
+                                    <input
+                                        v-model="form.phone"
+                                        type="text"
+                                        class="w-full py-3 pl-10 pr-4 rounded-xl border-gray-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+                                        placeholder="08xxxxxxxx"
+                                    />
                                 </div>
                             </div>
 
-                            <div class="mt-8 flex justify-end border-t pt-4">
-                                <button
-                                    type="submit"
-                                    :disabled="form.processing"
-                                    class="bg-blue-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-blue-700 transition shadow-lg disabled:opacity-50 flex items-center gap-2"
+                            <div>
+                                <label
+                                    class="block text-sm font-bold text-gray-700 mb-2"
+                                    >Alamat Lengkap</label
                                 >
-                                    <span v-if="form.processing"
-                                        >Menyimpan...</span
-                                    >
-                                    <span v-else>Simpan Data Siswa</span>
-                                </button>
+                                <textarea
+                                    v-model="form.address"
+                                    rows="3"
+                                    class="w-full py-3 px-4 rounded-xl border-gray-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+                                    placeholder="Nama Jalan, RT/RW, Kelurahan, Kecamatan..."
+                                ></textarea>
                             </div>
+
+                            <div
+                                class="mt-6 bg-blue-50 p-5 rounded-2xl border border-blue-100 flex gap-4 items-start"
+                            >
+                                <div
+                                    class="bg-white p-2 rounded-lg text-blue-600 shadow-sm border border-blue-100"
+                                >
+                                    <InformationCircleIcon class="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-blue-800 text-sm">
+                                        Akun Login Otomatis
+                                    </h4>
+                                    <p
+                                        class="text-xs text-blue-600 mt-1 leading-relaxed"
+                                    >
+                                        Sistem akan membuatkan akun untuk siswa
+                                        ini secara otomatis berdasarkan NIS:
+                                    </p>
+                                    <div class="mt-3 space-y-2">
+                                        <div
+                                            class="flex items-center gap-3 text-xs"
+                                        >
+                                            <span
+                                                class="font-bold text-blue-700 w-16"
+                                                >Email:</span
+                                            >
+                                            <span
+                                                class="font-mono bg-white px-3 py-1.5 rounded-lg border border-blue-200 text-blue-600 shadow-sm"
+                                            >
+                                                {{
+                                                    form.nis
+                                                        ? form.nis +
+                                                          "@smk.sch.id"
+                                                        : "nis@smk.sch.id"
+                                                }}
+                                            </span>
+                                        </div>
+                                        <div
+                                            class="flex items-center gap-3 text-xs"
+                                        >
+                                            <span
+                                                class="font-bold text-blue-700 w-16"
+                                                >Password:</span
+                                            >
+                                            <span
+                                                class="font-mono bg-white px-3 py-1.5 rounded-lg border border-blue-200 text-blue-600 shadow-sm"
+                                            >
+                                                {{ form.nis || "nis" }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end pt-4">
+                            <button
+                                type="submit"
+                                :disabled="form.processing"
+                                class="w-full md:w-auto px-8 py-4 rounded-2xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-200 flex items-center justify-center gap-2"
+                            >
+                                <CheckCircleIcon class="w-6 h-6" />
+                                {{
+                                    form.processing
+                                        ? "Menyimpan..."
+                                        : "Simpan Siswa Baru"
+                                }}
+                            </button>
                         </div>
                     </div>
                 </form>
