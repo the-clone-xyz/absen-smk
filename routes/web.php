@@ -19,7 +19,7 @@ use App\Http\Controllers\TaskController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminStudentController;
 use App\Http\Controllers\AdminTeacherController;
-
+use App\Http\Controllers\AdminDashboardController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -189,6 +189,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])
             Route::get('/attendance', 'attendanceSettings')->name('attendance');
             Route::patch('/attendance', 'updateSettings')->name('update');
         });
+
     });
 
 

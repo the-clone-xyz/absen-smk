@@ -1,11 +1,30 @@
 <?php
+
 namespace App\Models;
+
 use Illuminate\Database\Eloquent\Model;
 
 class Student extends Model
 {
-    protected $guarded = [];
+    protected $fillable = [
+        'user_id',
+        'class_id',
+        'nis',
+        'nisn',
+        'gender',
+        'pob',
+        'dob',
+        'phone',
+        'address', 
+    ];
 
-    public function user() { return $this->belongsTo(User::class); }
-    public function kelas() { return $this->belongsTo(Kelas::class, 'class_id'); }
+    public function user() 
+    { 
+        return $this->belongsTo(User::class); 
+    }
+
+    public function kelas() 
+    { 
+        return $this->belongsTo(Kelas::class, 'class_id'); 
+    }
 }
