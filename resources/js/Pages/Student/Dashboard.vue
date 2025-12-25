@@ -8,7 +8,7 @@ import {
     ClipboardDocumentListIcon,
     UserCircleIcon,
     ClockIcon,
-    BookOpenIcon,
+    BookOpenIcon, // Pastikan ini ada
     UserIcon,
     ChevronLeftIcon,
     ChevronRightIcon,
@@ -268,6 +268,52 @@ const isToday = (day) => {
 
                     <div class="space-y-8">
                         <div
+                            class="relative overflow-hidden bg-white rounded-3xl p-6 shadow-xl shadow-cyan-100 border border-white group transition-all hover:-translate-y-1"
+                        >
+                            <div
+                                class="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-cyan-50 rounded-full blur-2xl opacity-60"
+                            ></div>
+                            <div
+                                class="absolute bottom-0 left-0 -ml-8 -mb-8 w-24 h-24 bg-blue-50 rounded-full blur-2xl opacity-60"
+                            ></div>
+                            <BookOpenIcon
+                                class="absolute top-4 right-4 text-cyan-100 w-12 h-12 opacity-50 transform rotate-12"
+                            />
+
+                            <div
+                                class="relative z-10 flex flex-col items-center text-center"
+                            >
+                                <div
+                                    class="mb-3 inline-flex p-3 rounded-2xl bg-gradient-to-br from-cyan-50 to-white shadow-sm border border-cyan-50"
+                                >
+                                    <BookOpenIcon
+                                        class="w-8 h-8 text-cyan-600"
+                                    />
+                                </div>
+
+                                <h3
+                                    class="text-lg font-black text-slate-800 tracking-tight mb-1"
+                                >
+                                    Perpustakaan Digital
+                                </h3>
+                                <p
+                                    class="text-xs text-slate-500 mb-4 max-w-[200px] leading-relaxed"
+                                >
+                                    Baca buku pelajaran, modul, dan referensi
+                                    secara online.
+                                </p>
+
+                                <Link
+                                    :href="route('ebooks.index')"
+                                    class="w-full py-2.5 px-4 rounded-xl bg-cyan-600 text-white font-bold text-sm shadow-lg shadow-cyan-200 hover:bg-cyan-700 hover:shadow-cyan-300 transition-all flex items-center justify-center gap-2"
+                                >
+                                    <BookOpenIcon class="w-4 h-4" />
+                                    Buka Koleksi
+                                </Link>
+                            </div>
+                        </div>
+
+                        <div
                             class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden"
                         >
                             <div
@@ -283,12 +329,13 @@ const isToday = (day) => {
                                 </h3>
                                 <span
                                     class="text-[10px] font-bold bg-green-50 text-green-700 px-2.5 py-1 rounded-full uppercase tracking-wide"
-                                    >{{
+                                >
+                                    {{
                                         new Date().toLocaleDateString("id-ID", {
                                             weekday: "long",
                                         })
-                                    }}</span
-                                >
+                                    }}
+                                </span>
                             </div>
                             <div
                                 class="p-2 max-h-[350px] overflow-y-auto custom-scrollbar"
@@ -315,7 +362,6 @@ const isToday = (day) => {
                                     <div
                                         class="absolute left-[9px] top-1/2 -mt-1.5 w-3 h-3 rounded-full border-2 border-white bg-green-500 shadow-sm z-10"
                                     ></div>
-
                                     <Link
                                         :href="
                                             route(
@@ -344,13 +390,14 @@ const isToday = (day) => {
                                             <div class="text-right">
                                                 <span
                                                     class="text-xs font-mono font-bold text-gray-600 bg-gray-100 px-2 py-1 rounded"
-                                                    >{{
+                                                >
+                                                    {{
                                                         item.start_time.substring(
                                                             0,
                                                             5
                                                         )
-                                                    }}</span
-                                                >
+                                                    }}
+                                                </span>
                                                 <p
                                                     class="text-[10px] text-gray-400 mt-1"
                                                 >
