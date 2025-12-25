@@ -13,6 +13,10 @@ import {
     CameraIcon,
     BookOpenIcon,
     CalendarDaysIcon,
+    ClipboardDocumentListIcon,
+    AcademicCapIcon,
+    ArrowRightIcon,
+    ClockIcon, // Tambahan icon
 } from "@heroicons/vue/24/solid";
 
 import TeacherSchedule from "./Partials/TeacherSchedule.vue";
@@ -25,6 +29,29 @@ const props = defineProps({
     statistik: Object,
     jadwal: Array,
     jadwalKalender: Object,
+    kelas: {
+        type: Array,
+        default: () => [
+            {
+                id: 1,
+                name: "X TKJ 1",
+                subject: "Dasar Kejuruan",
+                student_count: 32,
+            },
+            {
+                id: 2,
+                name: "XI RPL 2",
+                subject: "Pemrograman Web",
+                student_count: 30,
+            },
+            {
+                id: 3,
+                name: "XII MM 1",
+                subject: "Desain Grafis",
+                student_count: 28,
+            },
+        ],
+    },
 });
 
 const showApprovalModal = ref(false);
@@ -87,7 +114,7 @@ const pendingCount = computed(() => {
         <div
             class="min-h-screen bg-[#F8FAFC] py-8 px-4 sm:px-6 lg:px-8 space-y-8"
         >
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <div
                     class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-4 hover:-translate-y-1 transition-all duration-300"
                 >
@@ -173,42 +200,123 @@ const pendingCount = computed(() => {
 
             <div class="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
                 <div class="xl:col-span-2 space-y-8">
-                    <div
-                        class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden"
-                    >
-                        <div
-                            class="px-6 py-4 border-b border-slate-50 flex items-center gap-2"
+                    <div>
+                        <h3
+                            class="font-bold text-xl text-slate-800 mb-4 flex items-center gap-2"
                         >
-                            <CalendarDaysIcon class="w-5 h-5 text-indigo-500" />
-                            <h3 class="font-bold text-slate-800">
-                                Jadwal Mengajar
-                            </h3>
+                            <span
+                                class="w-1.5 h-6 bg-indigo-500 rounded-full"
+                            ></span>
+                            Kelas Saya
+                        </h3>
+
+                        <div
+                            v-if="kelas.length > 0"
+                            class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"
+                        >
+                            <div
+                                v-for="item in kelas"
+                                :key="item.id"
+                                class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all group cursor-pointer relative overflow-hidden"
+                            >
+                                <div
+                                    class="absolute top-0 right-0 w-16 h-16 bg-indigo-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-125"
+                                ></div>
+                                <div class="relative z-10">
+                                    <div
+                                        class="flex justify-between items-start mb-3"
+                                    >
+                                        <div
+                                            class="w-10 h-10 rounded-xl bg-white border border-indigo-50 text-indigo-600 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform"
+                                        >
+                                            <AcademicCapIcon class="w-5 h-5" />
+                                        </div>
+                                        <span
+                                            class="text-[10px] font-bold bg-slate-50 text-slate-500 px-2 py-1 rounded-full border border-slate-100"
+                                        >
+                                            {{ item.student_count || 0 }} Siswa
+                                        </span>
+                                    </div>
+                                    <h4
+                                        class="font-bold text-lg text-slate-800 mb-0.5 group-hover:text-indigo-600 transition-colors"
+                                    >
+                                        {{ item.name }}
+                                    </h4>
+                                    <p
+                                        class="text-xs text-slate-500 mb-3 line-clamp-1"
+                                    >
+                                        {{ item.subject || "Wali Kelas" }}
+                                    </p>
+
+                                    <Link
+                                        :href="route('admin.classes.index')"
+                                        class="text-xs font-bold text-indigo-600 flex items-center gap-1 hover:gap-2 transition-all"
+                                    >
+                                        Lihat Detail
+                                        <ArrowRightIcon class="w-3 h-3" />
+                                    </Link>
+                                </div>
+                            </div>
                         </div>
-                        <div class="p-2">
-                            <TeacherSchedule :jadwal="jadwal" />
+                        <div
+                            v-else
+                            class="bg-white p-8 rounded-3xl border border-dashed border-slate-200 text-center"
+                        >
+                            <p class="text-slate-400 text-sm">
+                                Belum ada kelas yang ditugaskan.
+                            </p>
                         </div>
                     </div>
 
-                    <div
-                        class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden"
-                    >
-                        <div class="p-1">
-                            <TeacherCalendar :jadwalKalender="jadwalKalender" />
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div
+                            class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden flex flex-col"
+                        >
+                            <div
+                                class="px-5 py-4 border-b border-slate-50 flex items-center gap-2 bg-white sticky top-0 z-10"
+                            >
+                                <ClockIcon class="w-5 h-5 text-indigo-500" />
+                                <h3 class="font-bold text-slate-800">
+                                    Jadwal Hari Ini
+                                </h3>
+                            </div>
+                            <div class="p-4 flex-grow">
+                                <TeacherSchedule :jadwal="jadwal" />
+                            </div>
+                        </div>
+
+                        <div
+                            class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden flex flex-col"
+                        >
+                            <div
+                                class="px-5 py-4 border-b border-slate-50 flex items-center gap-2 bg-white"
+                            >
+                                <CalendarDaysIcon
+                                    class="w-5 h-5 text-indigo-500"
+                                />
+                                <h3 class="font-bold text-slate-800">
+                                    Kalender Akademik
+                                </h3>
+                            </div>
+                            <div
+                                class="p-2 flex-grow flex items-center justify-center"
+                            >
+                                <TeacherCalendar
+                                    :jadwalKalender="jadwalKalender"
+                                    class="w-full"
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="space-y-6">
                     <div
-                        class="relative overflow-hidden bg-white rounded-3xl p-6 shadow-xl shadow-indigo-100 border border-white group"
+                        class="relative overflow-hidden bg-white rounded-3xl p-6 shadow-xl shadow-indigo-100 border border-white group hover:-translate-y-1 transition-all"
                     >
                         <div
                             class="absolute top-0 right-0 -mr-8 -mt-8 w-40 h-40 bg-indigo-50 rounded-full blur-3xl opacity-60"
                         ></div>
-                        <div
-                            class="absolute bottom-0 left-0 -ml-8 -mb-8 w-32 h-32 bg-purple-50 rounded-full blur-3xl opacity-60"
-                        ></div>
-
                         <div
                             class="relative z-10 flex flex-col items-center text-center"
                         >
@@ -223,27 +331,53 @@ const pendingCount = computed(() => {
                                 Presensi Guru
                             </h3>
                             <p
-                                class="text-xs text-slate-500 mb-4 max-w-[200px] leading-relaxed"
+                                class="text-xs text-slate-500 mb-4 max-w-[200px]"
                             >
-                                Scan kode QR untuk mencatat kehadiran hari ini.
+                                Scan kode QR untuk mencatat kehadiran.
                             </p>
                             <Link
                                 :href="route('attendance.index')"
-                                class="w-full py-3 px-6 rounded-xl bg-indigo-600 text-white font-bold text-sm shadow-lg shadow-indigo-200 hover:bg-indigo-700 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+                                class="w-full py-3 px-6 rounded-xl bg-indigo-600 text-white font-bold text-sm shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
                             >
-                                <CameraIcon class="w-5 h-5" />
-                                Buka Scanner
+                                <CameraIcon class="w-5 h-5" /> Buka Scanner
                             </Link>
                         </div>
                     </div>
 
                     <div
-                        class="relative overflow-hidden bg-white rounded-3xl p-6 shadow-lg shadow-cyan-100 border border-slate-50 group"
+                        class="relative overflow-hidden bg-white rounded-3xl p-6 shadow-lg shadow-orange-100 border border-slate-50 group hover:-translate-y-1 transition-all"
+                    >
+                        <div
+                            class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-400 to-amber-500"
+                        ></div>
+                        <div class="flex items-center gap-4 mb-4">
+                            <div
+                                class="p-3 rounded-2xl bg-orange-50 text-orange-600"
+                            >
+                                <ClipboardDocumentListIcon class="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-800">
+                                    Tugas & PR
+                                </h3>
+                                <p class="text-xs text-slate-500">
+                                    Kelola nilai & tugas siswa
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            class="block w-full py-2.5 px-4 rounded-xl bg-white border-2 border-orange-100 text-orange-600 font-bold text-sm text-center hover:bg-orange-50 hover:border-orange-200 transition-all"
+                        >
+                            Buat Tugas Baru
+                        </button>
+                    </div>
+
+                    <div
+                        class="relative overflow-hidden bg-white rounded-3xl p-6 shadow-lg shadow-cyan-100 border border-slate-50 group hover:-translate-y-1 transition-all"
                     >
                         <div
                             class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-400 to-blue-500"
                         ></div>
-
                         <div class="flex items-center gap-4 mb-4">
                             <div
                                 class="p-3 rounded-2xl bg-cyan-50 text-cyan-600"
@@ -259,7 +393,6 @@ const pendingCount = computed(() => {
                                 </p>
                             </div>
                         </div>
-
                         <Link
                             :href="route('ebooks.index')"
                             class="block w-full py-2.5 px-4 rounded-xl bg-white border-2 border-cyan-100 text-cyan-700 font-bold text-sm text-center hover:bg-cyan-50 hover:border-cyan-200 transition-all"
