@@ -9,9 +9,10 @@ import {
     XCircleIcon,
     BellAlertIcon,
     XMarkIcon,
-    SparklesIcon,
     QrCodeIcon,
     CameraIcon,
+    BookOpenIcon,
+    CalendarDaysIcon,
 } from "@heroicons/vue/24/solid";
 
 import TeacherSchedule from "./Partials/TeacherSchedule.vue";
@@ -43,7 +44,7 @@ const pendingCount = computed(() => {
             >
                 <div>
                     <h2
-                        class="font-black text-3xl text-slate-800 tracking-tight"
+                        class="font-black text-2xl md:text-3xl text-slate-800 tracking-tight"
                     >
                         Panel Guru
                     </h2>
@@ -55,7 +56,7 @@ const pendingCount = computed(() => {
                 <div class="flex items-center gap-3">
                     <button
                         @click="showApprovalModal = true"
-                        class="relative p-3 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all group"
+                        class="relative p-2.5 rounded-xl bg-white border border-slate-100 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all group"
                     >
                         <BellAlertIcon
                             class="w-6 h-6 text-slate-400 group-hover:text-indigo-600 transition-colors"
@@ -86,62 +87,62 @@ const pendingCount = computed(() => {
         <div
             class="min-h-screen bg-[#F8FAFC] py-8 px-4 sm:px-6 lg:px-8 space-y-8"
         >
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-5">
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 <div
-                    class="bg-white p-6 rounded-[2rem] shadow-[0_2px_20px_rgb(0,0,0,0.04)] border border-slate-50 flex items-center gap-4 hover:-translate-y-1 transition-all duration-300 group"
+                    class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-4 hover:-translate-y-1 transition-all duration-300"
                 >
                     <div
-                        class="w-14 h-14 rounded-2xl bg-blue-50 text-blue-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform"
+                        class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-500 flex items-center justify-center shrink-0"
                     >
-                        <UserGroupIcon class="w-7 h-7" />
+                        <UserGroupIcon class="w-6 h-6" />
                     </div>
                     <div>
                         <p
-                            class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1"
+                            class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5"
                         >
                             Total Siswa
                         </p>
-                        <p class="text-3xl font-black text-slate-800">
+                        <p class="text-2xl font-black text-slate-800">
                             {{ statistik?.total_siswa || "-" }}
                         </p>
                     </div>
                 </div>
 
                 <div
-                    class="bg-white p-6 rounded-[2rem] shadow-[0_2px_20px_rgb(0,0,0,0.04)] border border-slate-50 flex items-center gap-4 hover:-translate-y-1 transition-all duration-300 group"
+                    class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-4 hover:-translate-y-1 transition-all duration-300"
                 >
                     <div
-                        class="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform"
+                        class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0"
                     >
-                        <CheckBadgeIcon class="w-7 h-7" />
+                        <CheckBadgeIcon class="w-6 h-6" />
                     </div>
                     <div>
                         <p
-                            class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1"
+                            class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5"
                         >
                             Hadir
                         </p>
-                        <p class="text-3xl font-black text-slate-800">
+                        <p class="text-2xl font-black text-slate-800">
                             {{ statistik?.hadir || "0" }}
                         </p>
                     </div>
                 </div>
 
                 <div
-                    class="bg-white p-6 rounded-[2rem] shadow-[0_2px_20px_rgb(0,0,0,0.04)] border border-slate-50 flex items-center gap-4 hover:-translate-y-1 transition-all duration-300 group"
+                    class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-4 hover:-translate-y-1 transition-all duration-300"
                 >
                     <div
-                        class="w-14 h-14 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform"
+                        class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center shrink-0"
                     >
-                        <ChartBarIcon class="w-7 h-7" />
+                        <ChartBarIcon class="w-6 h-6" />
                     </div>
                     <div>
                         <p
-                            class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1"
+                            class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5"
                         >
                             Izin / Sakit
                         </p>
-                        <p class="text-3xl font-black text-slate-800">
+                        <p class="text-2xl font-black text-slate-800">
                             {{
                                 (statistik?.izin || 0) + (statistik?.sakit || 0)
                             }}
@@ -150,45 +151,56 @@ const pendingCount = computed(() => {
                 </div>
 
                 <div
-                    class="bg-white p-6 rounded-[2rem] shadow-[0_2px_20px_rgb(0,0,0,0.04)] border border-slate-50 flex items-center gap-4 hover:-translate-y-1 transition-all duration-300 group"
+                    class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-4 hover:-translate-y-1 transition-all duration-300"
                 >
                     <div
-                        class="w-14 h-14 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform"
+                        class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center shrink-0"
                     >
-                        <XCircleIcon class="w-7 h-7" />
+                        <XCircleIcon class="w-6 h-6" />
                     </div>
                     <div>
                         <p
-                            class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1"
+                            class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5"
                         >
                             Alpha
                         </p>
-                        <p class="text-3xl font-black text-slate-800">
+                        <p class="text-2xl font-black text-slate-800">
                             {{ statistik?.alpha || "0" }}
                         </p>
                     </div>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                <div class="flex flex-col h-full">
-                    <TeacherSchedule
-                        :jadwal="jadwal"
-                        class="h-full shadow-[0_4px_20px_rgb(0,0,0,0.03)]"
-                    />
-                </div>
-
-                <div class="flex flex-col h-full">
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
+                <div class="xl:col-span-2 space-y-8">
                     <div
-                        class="h-full bg-white rounded-[2rem] p-1 shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-slate-50"
+                        class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden"
                     >
-                        <TeacherCalendar :jadwalKalender="jadwalKalender" />
+                        <div
+                            class="px-6 py-4 border-b border-slate-50 flex items-center gap-2"
+                        >
+                            <CalendarDaysIcon class="w-5 h-5 text-indigo-500" />
+                            <h3 class="font-bold text-slate-800">
+                                Jadwal Mengajar
+                            </h3>
+                        </div>
+                        <div class="p-2">
+                            <TeacherSchedule :jadwal="jadwal" />
+                        </div>
+                    </div>
+
+                    <div
+                        class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden"
+                    >
+                        <div class="p-1">
+                            <TeacherCalendar :jadwalKalender="jadwalKalender" />
+                        </div>
                     </div>
                 </div>
 
-                <div class="flex flex-col gap-6">
+                <div class="space-y-6">
                     <div
-                        class="relative overflow-hidden bg-white rounded-[2rem] p-6 shadow-xl shadow-indigo-100 border border-white group"
+                        class="relative overflow-hidden bg-white rounded-3xl p-6 shadow-xl shadow-indigo-100 border border-white group"
                     >
                         <div
                             class="absolute top-0 right-0 -mr-8 -mt-8 w-40 h-40 bg-indigo-50 rounded-full blur-3xl opacity-60"
@@ -197,42 +209,27 @@ const pendingCount = computed(() => {
                             class="absolute bottom-0 left-0 -ml-8 -mb-8 w-32 h-32 bg-purple-50 rounded-full blur-3xl opacity-60"
                         ></div>
 
-                        <svg
-                            class="absolute top-4 right-4 text-indigo-100 w-16 h-16 opacity-50"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                        >
-                            <path
-                                fill-rule="evenodd"
-                                d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm3.293 1.293a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 01-1.414-1.414L7.586 10 5.293 7.707a1 1 0 010-1.414zM11 12a1 1 0 100 2h3a1 1 0 100-2h-3z"
-                                clip-rule="evenodd"
-                            />
-                        </svg>
-
                         <div
                             class="relative z-10 flex flex-col items-center text-center"
                         >
                             <div
-                                class="mb-4 inline-flex p-4 rounded-2xl bg-gradient-to-br from-indigo-50 to-white shadow-sm border border-indigo-50"
+                                class="mb-3 inline-flex p-3 rounded-2xl bg-gradient-to-br from-indigo-50 to-white shadow-sm border border-indigo-50"
                             >
-                                <QrCodeIcon class="w-10 h-10 text-indigo-600" />
+                                <QrCodeIcon class="w-8 h-8 text-indigo-600" />
                             </div>
-
                             <h3
-                                class="text-xl font-black text-slate-800 tracking-tight mb-1"
+                                class="text-lg font-black text-slate-800 tracking-tight mb-1"
                             >
                                 Presensi Guru
                             </h3>
                             <p
-                                class="text-xs text-slate-500 mb-6 max-w-[200px] leading-relaxed"
+                                class="text-xs text-slate-500 mb-4 max-w-[200px] leading-relaxed"
                             >
-                                Catat kehadiran Anda dengan mudah melalui scan
-                                kode QR.
+                                Scan kode QR untuk mencatat kehadiran hari ini.
                             </p>
-
                             <Link
                                 :href="route('attendance.index')"
-                                class="w-full py-3.5 px-6 rounded-xl bg-indigo-600 text-white font-bold text-sm shadow-lg shadow-indigo-200 hover:bg-indigo-700 hover:shadow-indigo-300 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+                                class="w-full py-3 px-6 rounded-xl bg-indigo-600 text-white font-bold text-sm shadow-lg shadow-indigo-200 hover:bg-indigo-700 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
                             >
                                 <CameraIcon class="w-5 h-5" />
                                 Buka Scanner
@@ -241,38 +238,63 @@ const pendingCount = computed(() => {
                     </div>
 
                     <div
-                        class="bg-white rounded-[2rem] p-6 shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-slate-50 flex flex-col items-center text-center relative overflow-hidden"
+                        class="relative overflow-hidden bg-white rounded-3xl p-6 shadow-lg shadow-cyan-100 border border-slate-50 group"
                     >
                         <div
-                            class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-400 to-teal-400"
+                            class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-400 to-blue-500"
                         ></div>
 
-                        <div
-                            class="w-16 h-16 rounded-full bg-slate-50 border-4 border-white shadow-sm mb-3 flex items-center justify-center text-xl font-black text-slate-300"
-                        >
-                            {{ auth.user.name.substring(0, 1).toUpperCase() }}
+                        <div class="flex items-center gap-4 mb-4">
+                            <div
+                                class="p-3 rounded-2xl bg-cyan-50 text-cyan-600"
+                            >
+                                <BookOpenIcon class="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-800">
+                                    Perpustakaan
+                                </h3>
+                                <p class="text-xs text-slate-500">
+                                    Bahan ajar & E-Book
+                                </p>
+                            </div>
                         </div>
 
-                        <p
-                            class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1"
+                        <Link
+                            :href="route('ebooks.index')"
+                            class="block w-full py-2.5 px-4 rounded-xl bg-white border-2 border-cyan-100 text-cyan-700 font-bold text-sm text-center hover:bg-cyan-50 hover:border-cyan-200 transition-all"
                         >
-                            Status Hari Ini
-                        </p>
+                            Buka Koleksi
+                        </Link>
+                    </div>
 
-                        <div
-                            class="inline-flex items-center gap-2 px-4 py-1.5 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-100 mt-1"
-                        >
-                            <span class="relative flex h-2.5 w-2.5">
-                                <span
-                                    class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"
-                                ></span>
-                                <span
-                                    class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"
-                                ></span>
-                            </span>
-                            <span class="text-xs font-extrabold"
-                                >Aktif / Hadir</span
+                    <div
+                        class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex items-center justify-between"
+                    >
+                        <div>
+                            <p
+                                class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1"
                             >
+                                Status Anda
+                            </p>
+                            <div class="inline-flex items-center gap-2">
+                                <span class="relative flex h-2.5 w-2.5">
+                                    <span
+                                        class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"
+                                    ></span>
+                                    <span
+                                        class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"
+                                    ></span>
+                                </span>
+                                <span class="text-sm font-bold text-slate-700"
+                                    >Aktif / Hadir</span
+                                >
+                            </div>
+                        </div>
+                        <div
+                            class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-lg font-black text-slate-400 border-2 border-white shadow-sm"
+                        >
+                            {{ auth.user.name.substring(0, 1).toUpperCase() }}
                         </div>
                     </div>
                 </div>
@@ -287,7 +309,7 @@ const pendingCount = computed(() => {
                 class="flex items-center justify-center min-h-screen px-4 text-center"
             >
                 <div
-                    class="fixed inset-0 bg-slate-900/20 backdrop-blur-sm transition-opacity"
+                    class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
                     @click="showApprovalModal = false"
                 ></div>
                 <div

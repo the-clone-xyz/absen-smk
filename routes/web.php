@@ -20,6 +20,8 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminStudentController;
 use App\Http\Controllers\AdminTeacherController;
 use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\EbookController;
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -217,6 +219,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/viewer', 'show')->name('viewer.show');
         Route::get('/viewer/download', 'download')->name('viewer.download');
     });
+
+    Route::get('/library', [EbookController::class, 'index'])->name('ebooks.index');
+    
+    // KEMBALI KE POST BIASA
+    Route::post('/ebooks', [EbookController::class, 'store'])->name('ebooks.store');
+    
+    Route::delete('/ebooks/{id}', [EbookController::class, 'destroy'])->name('ebooks.destroy');
+    Route::get('/ebooks/{ebook}/read', [EbookController::class, 'read'])->name('ebooks.read');
+    Route::get('/ebooks/{ebook}/read-flip', [EbookController::class, 'readFlip'])->name('ebooks.readFlip');
 });
 
 require __DIR__.'/auth.php';

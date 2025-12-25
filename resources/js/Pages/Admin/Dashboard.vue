@@ -5,7 +5,7 @@ import { computed } from "vue";
 import {
     UserGroupIcon,
     AcademicCapIcon,
-    BookOpenIcon,
+    BookOpenIcon, // Pastikan ini ada
     CalendarDaysIcon,
     QrCodeIcon,
     Cog6ToothIcon,
@@ -116,13 +116,23 @@ const adminMenu = computed(() => [
         color: "text-emerald-600",
         bg: "bg-emerald-50",
     },
+    // --- FITUR BARU: PERPUSTAKAAN ---
+    {
+        name: "Perpustakaan",
+        desc: "Kelola E-Book",
+        icon: BookOpenIcon, // Icon Buku
+        route: route("ebooks.index"), // Route ke halaman Library
+        color: "text-cyan-600",
+        bg: "bg-cyan-50",
+    },
+    // --------------------------------
     {
         name: "QR Generator",
         desc: "Buat Token",
         icon: QrCodeIcon,
         route: route("admin.settings.qr"),
-        color: "text-cyan-600",
-        bg: "bg-cyan-50",
+        color: "text-teal-600", // Ubah warna agar beda dengan Perpustakaan
+        bg: "bg-teal-50",
     },
     {
         name: "Pengaturan",
