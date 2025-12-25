@@ -16,7 +16,9 @@ import {
     ClipboardDocumentListIcon,
     AcademicCapIcon,
     ArrowRightIcon,
-    ClockIcon, // Tambahan icon
+    ClockIcon,
+    ChevronLeftIcon,
+    ChevronRightIcon,
 } from "@heroicons/vue/24/solid";
 
 import TeacherSchedule from "./Partials/TeacherSchedule.vue";
@@ -31,34 +33,29 @@ const props = defineProps({
     jadwalKalender: Object,
     kelas: {
         type: Array,
-        default: () => [
-            {
-                id: 1,
-                name: "X TKJ 1",
-                subject: "Dasar Kejuruan",
-                student_count: 32,
-            },
-            {
-                id: 2,
-                name: "XI RPL 2",
-                subject: "Pemrograman Web",
-                student_count: 30,
-            },
-            {
-                id: 3,
-                name: "XII MM 1",
-                subject: "Desain Grafis",
-                student_count: 28,
-            },
-        ],
+        default: () => [], // Default array kosong agar aman jika data belum masuk
     },
 });
 
 const showApprovalModal = ref(false);
+const classContainer = ref(null);
+
 const pendingCount = computed(() => {
     if (!props.absensiGrouped) return 0;
     return Object.values(props.absensiGrouped).flat().length;
 });
+
+const scrollLeft = () => {
+    if (classContainer.value) {
+        classContainer.value.scrollBy({ left: -300, behavior: "smooth" });
+    }
+};
+
+const scrollRight = () => {
+    if (classContainer.value) {
+        classContainer.value.scrollBy({ left: 300, behavior: "smooth" });
+    }
+};
 </script>
 
 <template>
@@ -201,76 +198,131 @@ const pendingCount = computed(() => {
             <div class="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
                 <div class="xl:col-span-2 space-y-8">
                     <div>
-                        <h3
-                            class="font-bold text-xl text-slate-800 mb-4 flex items-center gap-2"
-                        >
-                            <span
-                                class="w-1.5 h-6 bg-indigo-500 rounded-full"
-                            ></span>
-                            Kelas Saya
-                        </h3>
-
-                        <div
-                            v-if="kelas.length > 0"
-                            class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"
-                        >
-                            <div
-                                v-for="item in kelas"
-                                :key="item.id"
-                                class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all group cursor-pointer relative overflow-hidden"
+                        <div class="flex justify-between items-center mb-4">
+                            <h3
+                                class="font-bold text-xl text-slate-800 flex items-center gap-2"
                             >
-                                <div
-                                    class="absolute top-0 right-0 w-16 h-16 bg-indigo-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-125"
-                                ></div>
-                                <div class="relative z-10">
-                                    <div
-                                        class="flex justify-between items-start mb-3"
-                                    >
-                                        <div
-                                            class="w-10 h-10 rounded-xl bg-white border border-indigo-50 text-indigo-600 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform"
-                                        >
-                                            <AcademicCapIcon class="w-5 h-5" />
-                                        </div>
-                                        <span
-                                            class="text-[10px] font-bold bg-slate-50 text-slate-500 px-2 py-1 rounded-full border border-slate-100"
-                                        >
-                                            {{ item.student_count || 0 }} Siswa
-                                        </span>
-                                    </div>
-                                    <h4
-                                        class="font-bold text-lg text-slate-800 mb-0.5 group-hover:text-indigo-600 transition-colors"
-                                    >
-                                        {{ item.name }}
-                                    </h4>
-                                    <p
-                                        class="text-xs text-slate-500 mb-3 line-clamp-1"
-                                    >
-                                        {{ item.subject || "Wali Kelas" }}
-                                    </p>
+                                <span
+                                    class="w-1.5 h-6 bg-indigo-500 rounded-full"
+                                ></span>
+                                Kelas Saya
+                            </h3>
 
-                                    <Link
-                                        :href="route('admin.classes.index')"
-                                        class="text-xs font-bold text-indigo-600 flex items-center gap-1 hover:gap-2 transition-all"
-                                    >
-                                        Lihat Detail
-                                        <ArrowRightIcon class="w-3 h-3" />
-                                    </Link>
-                                </div>
+                            <div class="flex gap-2" v-if="kelas.length > 3">
+                                <button
+                                    @click="scrollLeft"
+                                    class="p-1.5 rounded-full bg-white border border-slate-200 text-slate-500 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition shadow-sm"
+                                >
+                                    <ChevronLeftIcon class="w-5 h-5" />
+                                </button>
+                                <button
+                                    @click="scrollRight"
+                                    class="p-1.5 rounded-full bg-white border border-slate-200 text-slate-500 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition shadow-sm"
+                                >
+                                    <ChevronRightIcon class="w-5 h-5" />
+                                </button>
                             </div>
                         </div>
+
                         <div
-                            v-else
-                            class="bg-white p-8 rounded-3xl border border-dashed border-slate-200 text-center"
+                            ref="classContainer"
+                            class="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide"
+                            style="
+                                scrollbar-width: none;
+                                -ms-overflow-style: none;
+                            "
                         >
-                            <p class="text-slate-400 text-sm">
-                                Belum ada kelas yang ditugaskan.
-                            </p>
+                            <template v-if="kelas.length > 0">
+                                <div
+                                    v-for="(item, index) in kelas"
+                                    :key="index"
+                                    class="flex-none w-full sm:w-[300px] snap-start"
+                                >
+                                    <div
+                                        class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all group relative overflow-hidden h-full flex flex-col"
+                                    >
+                                        <div
+                                            class="absolute top-0 right-0 w-20 h-20 bg-indigo-50 rounded-bl-full -mr-6 -mt-6 transition-transform group-hover:scale-125"
+                                        ></div>
+
+                                        <div
+                                            class="relative z-10 flex justify-between items-start mb-4"
+                                        >
+                                            <div
+                                                class="flex items-center gap-3"
+                                            >
+                                                <div
+                                                    class="w-12 h-12 rounded-2xl bg-white border border-indigo-50 text-indigo-600 flex items-center justify-center shadow-sm"
+                                                >
+                                                    <AcademicCapIcon
+                                                        class="w-6 h-6"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <h4
+                                                        class="font-bold text-lg text-slate-800 leading-tight"
+                                                    >
+                                                        {{ item.class_name }}
+                                                    </h4>
+                                                    <span
+                                                        class="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full border border-slate-200"
+                                                    >
+                                                        {{
+                                                            item.student_count ||
+                                                            0
+                                                        }}
+                                                        Siswa
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="mt-auto">
+                                            <p
+                                                class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2"
+                                            >
+                                                Mata Pelajaran
+                                            </p>
+                                            <div class="flex flex-col gap-2">
+                                                <Link
+                                                    v-for="subj in item.subjects"
+                                                    :key="subj.schedule_id"
+                                                    :href="
+                                                        route(
+                                                            'teacher.classroom.show',
+                                                            subj.schedule_id
+                                                        )
+                                                    "
+                                                    class="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 transition group/link border border-slate-100 hover:border-indigo-100"
+                                                >
+                                                    <span
+                                                        class="text-sm font-bold text-slate-600 group-hover/link:text-indigo-700 truncate mr-2"
+                                                        >{{ subj.name }}</span
+                                                    >
+                                                    <ArrowRightIcon
+                                                        class="w-4 h-4 text-slate-300 group-hover/link:text-indigo-500"
+                                                    />
+                                                </Link>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <div
+                                v-else
+                                class="w-full bg-white p-8 rounded-3xl border border-dashed border-slate-200 text-center"
+                            >
+                                <p class="text-slate-400 text-sm">
+                                    Belum ada jadwal mengajar.
+                                </p>
+                            </div>
                         </div>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div
-                            class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden flex flex-col"
+                            class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden flex flex-col h-[400px]"
                         >
                             <div
                                 class="px-5 py-4 border-b border-slate-50 flex items-center gap-2 bg-white sticky top-0 z-10"
@@ -280,13 +332,15 @@ const pendingCount = computed(() => {
                                     Jadwal Hari Ini
                                 </h3>
                             </div>
-                            <div class="p-4 flex-grow">
+                            <div
+                                class="p-4 flex-grow overflow-y-auto custom-scrollbar"
+                            >
                                 <TeacherSchedule :jadwal="jadwal" />
                             </div>
                         </div>
 
                         <div
-                            class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden flex flex-col"
+                            class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden flex flex-col h-[400px]"
                         >
                             <div
                                 class="px-5 py-4 border-b border-slate-50 flex items-center gap-2 bg-white"
@@ -295,7 +349,7 @@ const pendingCount = computed(() => {
                                     class="w-5 h-5 text-indigo-500"
                                 />
                                 <h3 class="font-bold text-slate-800">
-                                    Kalender Akademik
+                                    Kalender
                                 </h3>
                             </div>
                             <div
@@ -474,3 +528,27 @@ const pendingCount = computed(() => {
         </div>
     </AuthenticatedLayout>
 </template>
+
+<style scoped>
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+</style>

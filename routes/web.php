@@ -22,6 +22,7 @@ use App\Http\Controllers\AdminTeacherController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\EbookController;
 
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -95,49 +96,51 @@ Route::middleware(['auth', 'verified', 'role:teacher'])
     ->prefix('guru')
     ->group(function () {
 
-        // --- GROUP A: Namespace 'teacher.' (Dashboard & Manajemen Umum) ---
+        // --- GROUP A: Dashboard & Manajemen Kelas ---
         Route::name('teacher.')->group(function () {
             Route::get('/dashboard', [TeacherController::class, 'index'])->name('dashboard');
-            
-            // Absensi Approval & Token
+
+            // 1. DETAIL KELAS (Pusat Komando: Siswa, Tugas, Materi)
+            // Ini yang diakses dari kartu "Kelas Saya" di Dashboard
+            Route::get('/kelas/{id}', [TeacherController::class, 'show'])
+                ->whereNumber('id')
+                ->name('classroom.show');
+
+            // 2. LIVE SESSION (Jurnal & Scanner Harian)
+            // Diakses saat jam pelajaran berlangsung
+            Route::get('/sesi-mengajar/{scheduleId}', [TeacherController::class, 'showClass'])
+                ->whereNumber('scheduleId')
+                ->name('session.show');
+
+            // 3. ABSENSI & APPROVAL
             Route::get('/qr-token', [TeacherController::class, 'getQrToken'])->name('qr.token');
             Route::get('/approval/izin', [TeacherController::class, 'showPending'])->name('approval.index');
             Route::patch('/absensi/{id}/approve', [TeacherController::class, 'updateStatus'])
                 ->whereNumber('id')
                 ->name('attendance.approve');
 
-            // Manajemen Kelas (Jurnal)
-            Route::get('/kelas/{scheduleId}', [TeacherController::class, 'showClass'])
-                ->whereNumber('scheduleId')
-                ->name('classroom.show');
-            
+            // 4. API / DATA PENDUKUNG (Jurnal & Realtime)
             Route::post('/jurnal', [TeacherController::class, 'storeJournal'])->name('journal.store');
-            
-            // Data Realtime Kelas
             Route::get('/class-qr-token/{scheduleId}', [TeacherController::class, 'getClassQrToken'])->name('classroom.qr_token');
             Route::get('/class-data/{scheduleId}', [TeacherController::class, 'getClassData'])->name('classroom.data');
         });
 
-        // --- GROUP B: Namespace Global (Manajemen Tugas) ---
-        // Penamaan route disesuaikan agar frontend tidak perlu ubah kode
+        // --- GROUP B: Manajemen Tugas ---
         Route::controller(TaskController::class)->group(function () {
             // Read
             Route::get('/tugas/{task}', 'show')->whereNumber('task')->name('teacher.tasks.show');
             
-            // Create
+            // Create, Update, Delete
             Route::post('/tugas', 'store')->name('tasks.store');
-            
-            // Update & Delete
             Route::post('/tugas/{id}/update', 'update')->whereNumber('id')->name('tasks.update');
             Route::delete('/tugas/{id}', 'destroy')->whereNumber('id')->name('tasks.destroy');
             
-            // Grading
+            // Penilaian
             Route::post('/tugas/submission/{id}/grade', 'gradeSubmission')
                 ->whereNumber('id')
                 ->name('tasks.grade');
         });
     });
-
 
 // =========================================================================
 // ZONA 3: ADMIN (Administrator)

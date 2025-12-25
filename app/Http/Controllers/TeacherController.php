@@ -7,6 +7,7 @@ use App\Models\Attendance;
 use App\Models\Schedule;
 use App\Models\Journal;
 use App\Models\Student;
+use App\Models\Kelas; // Tambahan: Model Kelas
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Traits\AttendanceTokenTrait;
@@ -50,16 +51,11 @@ class TeacherController extends Controller
             ->get()
             ->groupBy('day');
 
-        $classIds = Schedule::where('teacher_id', $teacher->id)
-                    ->pluck('class_id') 
-                    ->unique();
-
-        $studentUserIds = Student::whereIn('class_id', $classIds) 
-                    ->pluck('user_id');
-
+        // 3. STATISTIK ABSENSI
+        $classIds = Schedule::where('teacher_id', $teacher->id)->pluck('class_id')->unique();
+        $studentUserIds = Student::whereIn('class_id', $classIds)->pluck('user_id');
         $totalSiswa = $studentUserIds->count();
 
-        // C. Hitung Absensi Hari Ini
         $attendanceStats = Attendance::whereIn('user_id', $studentUserIds)
             ->where('date', $tanggalIni)
             ->select('status', DB::raw('count(*) as total'))
@@ -82,23 +78,119 @@ class TeacherController extends Controller
             ->where('approval_status', 'pending')
             ->latest()
             ->get()
-            ->groupBy(function($item) {
+            ->groupBy(function ($item) {
                 return $item->user->student->kelas->name ?? 'Lainnya';
             });
+
+        // 5. DATA KELAS SAYA (Untuk Slider Dashboard)
+        $kelasSaya = Schedule::with(['kelas.students', 'subject'])
+            ->where('teacher_id', $teacher->id)
+            ->get()
+            ->groupBy('class_id') // Group berdasarkan ID Kelas Fisik
+            ->map(function ($schedulesInClass) {
+                $firstSchedule = $schedulesInClass->first();
+                return [
+                    'class_name' => $firstSchedule->kelas->name, // Nama Kelas (Induk)
+                    'student_count' => $firstSchedule->kelas->students->count(),
+                    // Ambil mapel unik yang diajar guru ini di kelas tsb
+                    'subjects' => $schedulesInClass->unique('subject_id')->map(function ($s) {
+                        return [
+                            'schedule_id' => $s->id, // Link ke detail mapel
+                            'name' => $s->subject->name // Nama Mapel
+                        ];
+                    })->values()
+                ];
+            })->values();
 
         return Inertia::render('Teacher/Dashboard', [
             'auth' => ['user' => $user],
             'absensiGrouped' => $absensiGrouped,
             'statistik' => $stats,
             'jadwal' => $jadwalHariIni,
-            'jadwalKalender' => $jadwalBulanan
+            'jadwalKalender' => $jadwalBulanan,
+            'kelas' => $kelasSaya, 
+        ]);
+    }
+
+    // --- FITUR DETAIL KELAS (PUSAT KOMANDO) ---
+    public function show($id)
+    {
+        $teacherId = auth()->user()->teacher->id;
+        $schedule = Schedule::with(['kelas.students', 'subject'])
+            ->where('id', $id)
+            ->where('teacher_id', $teacherId)
+            ->firstOrFail();
+
+        // Hitung Pertemuan
+        $sessionCount = Journal::where('schedule_id', $schedule->id)->count();
+        $currentSession = $sessionCount + 1;
+        $today = now()->format('Y-m-d');
+
+        // 1. Data Siswa & Status Absen
+        $students = $schedule->kelas->students->map(function ($student) use ($today) {
+            $attendance = Attendance::where('user_id', $student->user_id)
+                ->whereDate('created_at', $today)
+                ->first();
+
+            return [
+                'id' => $student->id,
+                'name' => $student->name,
+                'nis' => $student->nis ?? '-',
+                'status' => $attendance ? $attendance->status : 'Belum Absen',
+            ];
+        });
+
+        // 2. Data Tugas (Dari Task Model)
+        $assignments = Task::where('kelas_id', $schedule->class_id)
+            ->where('subject_id', $schedule->subject_id)
+            ->latest()
+            ->get()
+            ->map(function ($task) use ($schedule) {
+                return [
+                    'id' => $task->id,
+                    'title' => $task->title,
+                    'deadline' => Carbon::parse($task->deadline)->translatedFormat('d M Y'),
+                    'submitted' => $task->submissions ? $task->submissions->count() : 0,
+                    'total' => $schedule->kelas->students->count(),
+                    'status' => $task->deadline > now() ? 'active' : 'closed',
+                ];
+            });
+
+        // 3. Data Materi (Dari Jurnal Harian)
+        $materials = Journal::where('schedule_id', $schedule->id)
+            ->whereNotNull('module_path')
+            ->latest()
+            ->get()
+            ->map(function ($journal) {
+                return [
+                    'id' => $journal->id,
+                    'title' => $journal->topic,
+                    'type' => pathinfo($journal->module_path, PATHINFO_EXTENSION),
+                    'size' => 'Unduh', 
+                    'date' => Carbon::parse($journal->date)->translatedFormat('d M Y'),
+                    'file_url' => asset('storage/' . $journal->module_path)
+                ];
+            });
+
+        return Inertia::render('Teacher/ClassroomShow', [
+            'classroom' => [
+                'id' => $schedule->id,
+                'name' => $schedule->kelas->name,
+                'subject' => $schedule->subject->name,
+                'description' => "Kelas " . $schedule->kelas->name . " - " . $schedule->subject->name,
+                'session_current' => $currentSession,
+                'session_total' => 16, 
+                'student_count' => $students->count(),
+            ],
+            'students' => $students,
+            'assignments' => $assignments,
+            'materials' => $materials,
         ]);
     }
 
     public function showClass($scheduleId)
     {
         $teacherId = auth()->user()->teacher->id;
-        
         $schedule = Schedule::with(['kelas.students.user', 'subject'])
                     ->where('id', $scheduleId)
                     ->where('teacher_id', $teacherId)
@@ -110,8 +202,8 @@ class TeacherController extends Controller
                 ->first();
 
         $tasks = Task::with('submissions.student')
-                ->where('kelas_id', $schedule->kelas->id) // Asumsi tasks tetap pakai kelas_id (sesuai screenshot lama)
-                ->where('subject_id', $schedule->subject->id) 
+                ->where('kelas_id', $schedule->class_id)
+                ->where('subject_id', $schedule->subject_id) 
                 ->latest()
                 ->get();
 
