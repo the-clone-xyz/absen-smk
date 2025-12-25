@@ -92,7 +92,7 @@ Route::middleware(['auth', 'verified', 'role:student'])
 // =========================================================================
 // ZONA 2: GURU (Teacher)
 // =========================================================================
-Route::middleware(['auth', 'verified', 'role:teacher'])
+    Route::middleware(['auth', 'verified', 'role:teacher'])
     ->prefix('guru')
     ->group(function () {
 
@@ -100,17 +100,15 @@ Route::middleware(['auth', 'verified', 'role:teacher'])
         Route::name('teacher.')->group(function () {
             Route::get('/dashboard', [TeacherController::class, 'index'])->name('dashboard');
 
-            // 1. DETAIL KELAS (Pusat Komando: Siswa, Tugas, Materi)
-            // Ini yang diakses dari kartu "Kelas Saya" di Dashboard
-            Route::get('/kelas/{id}', [TeacherController::class, 'show'])
+           // 1. DETAIL KELAS (Data Induk/Anggota) -> ClassroomShow.vue
+            Route::get('/kelas-induk/{id}', [TeacherController::class, 'show'])
                 ->whereNumber('id')
                 ->name('classroom.show');
 
-            // 2. LIVE SESSION (Jurnal & Scanner Harian)
-            // Diakses saat jam pelajaran berlangsung
+            // 2. SESI MENGAJAR (Harian/Sesi) -> Classroom.vue (Kode yang Bapak kirim)
             Route::get('/sesi-mengajar/{scheduleId}', [TeacherController::class, 'showClass'])
                 ->whereNumber('scheduleId')
-                ->name('session.show');
+                ->name('classroom.session'); // Kita beri nama rute ini 'classroom.session'
 
             // 3. ABSENSI & APPROVAL
             Route::get('/qr-token', [TeacherController::class, 'getQrToken'])->name('qr.token');
@@ -119,26 +117,19 @@ Route::middleware(['auth', 'verified', 'role:teacher'])
                 ->whereNumber('id')
                 ->name('attendance.approve');
 
-            // 4. API / DATA PENDUKUNG (Jurnal & Realtime)
+            // 4. API / DATA PENDUKUNG
             Route::post('/jurnal', [TeacherController::class, 'storeJournal'])->name('journal.store');
             Route::get('/class-qr-token/{scheduleId}', [TeacherController::class, 'getClassQrToken'])->name('classroom.qr_token');
             Route::get('/class-data/{scheduleId}', [TeacherController::class, 'getClassData'])->name('classroom.data');
         });
 
-        // --- GROUP B: Manajemen Tugas ---
+        // --- GROUP B: Manajemen Tugas (Jangan Diganggu) ---
         Route::controller(TaskController::class)->group(function () {
-            // Read
             Route::get('/tugas/{task}', 'show')->whereNumber('task')->name('teacher.tasks.show');
-            
-            // Create, Update, Delete
             Route::post('/tugas', 'store')->name('tasks.store');
             Route::post('/tugas/{id}/update', 'update')->whereNumber('id')->name('tasks.update');
             Route::delete('/tugas/{id}', 'destroy')->whereNumber('id')->name('tasks.destroy');
-            
-            // Penilaian
-            Route::post('/tugas/submission/{id}/grade', 'gradeSubmission')
-                ->whereNumber('id')
-                ->name('tasks.grade');
+            Route::post('/tugas/submission/{id}/grade', 'gradeSubmission')->whereNumber('id')->name('tasks.grade');
         });
     });
 

@@ -7,35 +7,30 @@ import {
     UserGroupIcon,
     BookOpenIcon,
     ClipboardDocumentListIcon,
-    ClockIcon,
-    EllipsisHorizontalIcon,
-    PlusIcon,
-    DocumentTextIcon,
-    VideoCameraIcon,
-    ArrowDownTrayIcon,
-    CheckCircleIcon,
+    AcademicCapIcon,
+    InformationCircleIcon,
+    ChartBarIcon,
 } from "@heroicons/vue/24/solid";
 
 const props = defineProps({
-    classroom: Object,
-    students: Array,
-    assignments: Array,
-    materials: Array,
+    classroom: Object, // Data Utama Kelas (Nama, Mapel, Deskripsi, dll)
+    students: Array, // Daftar Seluruh Anggota Kelas
+    assignments: Array, // Rekap Seluruh Tugas yang pernah diberikan
+    materials: Array, // Rekap Seluruh Modul/Materi yang tersedia
 });
 
-// State untuk Tab Aktif
-const activeTab = ref("overview"); // overview, students, assignments, materials
+const activeTab = ref("overview");
 
 const tabs = [
-    { id: "overview", label: "Ringkasan" },
-    { id: "students", label: "Daftar Siswa" },
-    { id: "assignments", label: "Tugas" },
-    { id: "materials", label: "Materi & Modul" },
+    { id: "overview", label: "Ringkasan Kelas" },
+    { id: "students", label: "Anggota Kelas" },
+    { id: "assignments", label: "Rekap Tugas" },
+    { id: "materials", label: "Bank Materi" },
 ];
 </script>
 
 <template>
-    <Head :title="classroom.name" />
+    <Head :title="`Detail Kelas ${classroom.name}`" />
 
     <AuthenticatedLayout>
         <div class="min-h-screen bg-[#F8FAFC] pb-20">
@@ -45,73 +40,75 @@ const tabs = [
                         :href="route('dashboard')"
                         class="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-indigo-600 transition mb-6 font-medium"
                     >
-                        <ArrowLeftIcon class="w-4 h-4" /> Kembali ke Dashboard
+                        <ArrowLeftIcon class="w-4 h-4" /> Kembali ke Panel Utama
                     </Link>
 
                     <div
                         class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6"
                     >
-                        <div>
-                            <div class="flex items-center gap-3 mb-2">
-                                <span
-                                    class="px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold uppercase tracking-wider border border-indigo-100"
-                                >
-                                    {{ classroom.subject }}
-                                </span>
-                            </div>
-                            <h1
-                                class="text-3xl md:text-4xl font-black text-slate-800 tracking-tight mb-2"
+                        <div class="flex items-center gap-5">
+                            <div
+                                class="w-16 h-16 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-200"
                             >
-                                {{ classroom.name }}
-                            </h1>
-                            <p class="text-slate-500">
-                                {{ classroom.description }}
-                            </p>
+                                <AcademicCapIcon class="w-10 h-10" />
+                            </div>
+                            <div>
+                                <h1
+                                    class="text-3xl font-black text-slate-800 tracking-tight leading-none mb-2"
+                                >
+                                    {{ classroom.name }}
+                                </h1>
+                                <p
+                                    class="text-slate-500 font-medium flex items-center gap-2"
+                                >
+                                    <BookOpenIcon
+                                        class="w-4 h-4 text-indigo-500"
+                                    />
+                                    {{ classroom.subject }}
+                                </p>
+                            </div>
                         </div>
 
                         <div class="flex gap-4">
                             <div
-                                class="bg-slate-50 px-5 py-3 rounded-2xl border border-slate-100 text-center"
+                                class="bg-slate-50 px-6 py-3 rounded-2xl border border-slate-100 text-center"
                             >
                                 <p
-                                    class="text-xs text-slate-400 font-bold uppercase"
+                                    class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1"
                                 >
-                                    Siswa
+                                    Total Siswa
                                 </p>
-                                <p class="text-xl font-black text-slate-700">
+                                <p class="text-2xl font-black text-slate-700">
                                     {{ students.length }}
                                 </p>
                             </div>
                             <div
-                                class="bg-indigo-50 px-5 py-3 rounded-2xl border border-indigo-100 text-center"
+                                class="bg-indigo-50 px-6 py-3 rounded-2xl border border-indigo-100 text-center"
                             >
                                 <p
-                                    class="text-xs text-indigo-400 font-bold uppercase"
+                                    class="text-[10px] text-indigo-400 font-bold uppercase tracking-widest mb-1"
                                 >
-                                    Sesi Ke
+                                    Total Sesi
                                 </p>
-                                <p class="text-xl font-black text-indigo-700">
-                                    {{ classroom.session
-                                    }}<span class="text-xs text-indigo-300"
-                                        >/{{ classroom.total_sessions }}</span
-                                    >
+                                <p class="text-2xl font-black text-indigo-700">
+                                    {{ classroom.session_total }}
                                 </p>
                             </div>
                         </div>
                     </div>
 
                     <div
-                        class="flex items-center gap-6 mt-10 border-b border-slate-100 overflow-x-auto"
+                        class="flex items-center gap-8 mt-10 border-b border-slate-100 overflow-x-auto scrollbar-hide"
                     >
                         <button
                             v-for="tab in tabs"
                             :key="tab.id"
                             @click="activeTab = tab.id"
-                            class="pb-3 text-sm font-bold transition-all relative whitespace-nowrap"
+                            class="pb-4 text-sm font-bold transition-all relative whitespace-nowrap"
                             :class="
                                 activeTab === tab.id
                                     ? 'text-indigo-600'
-                                    : 'text-slate-400 hover:text-slate-600'
+                                    : 'text-slate-400 hover:text-slate-500'
                             "
                         >
                             {{ tab.label }}
@@ -128,287 +125,252 @@ const tabs = [
                 <div v-if="activeTab === 'overview'" class="space-y-6">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div
-                            class="col-span-2 bg-gradient-to-br from-indigo-600 to-violet-700 rounded-3xl p-8 text-white relative overflow-hidden shadow-xl"
+                            class="col-span-2 bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm relative overflow-hidden"
                         >
                             <div class="relative z-10">
-                                <h3 class="text-2xl font-bold mb-2">
-                                    Progress Pembelajaran
-                                </h3>
-                                <p class="text-indigo-100 mb-6 max-w-md">
-                                    Anda telah menyelesaikan
-                                    {{ classroom.session }} dari
-                                    {{ classroom.total_sessions }} pertemuan
-                                    yang direncanakan. Pertahankan semangat!
-                                </p>
-
+                                <div class="flex items-center gap-3 mb-6">
+                                    <div
+                                        class="p-2 bg-indigo-50 rounded-lg text-indigo-600"
+                                    >
+                                        <ChartBarIcon class="w-5 h-5" />
+                                    </div>
+                                    <h3
+                                        class="text-lg font-bold text-slate-800"
+                                    >
+                                        Progress Kurikulum Smt. Ganjil
+                                    </h3>
+                                </div>
                                 <div
-                                    class="bg-white/20 h-3 rounded-full w-full backdrop-blur-sm overflow-hidden"
+                                    class="flex items-end justify-between mb-4"
+                                >
+                                    <div>
+                                        <span
+                                            class="text-4xl font-black text-slate-800"
+                                            >{{
+                                                classroom.session_completed
+                                            }}</span
+                                        >
+                                        <span
+                                            class="text-slate-400 font-bold ml-2 text-lg"
+                                            >/
+                                            {{ classroom.session_total }} Sesi
+                                            Selesai</span
+                                        >
+                                    </div>
+                                    <span
+                                        class="text-indigo-600 font-black text-xl"
+                                        >{{
+                                            classroom.progress_percentage
+                                        }}%</span
+                                    >
+                                </div>
+                                <div
+                                    class="w-full bg-slate-100 rounded-full h-4 overflow-hidden"
                                 >
                                     <div
-                                        class="bg-white h-full rounded-full"
-                                        :style="`width: ${
-                                            (classroom.session /
-                                                classroom.total_sessions) *
-                                            100
-                                        }%`"
+                                        class="bg-indigo-600 h-full rounded-full transition-all duration-1000"
+                                        :style="{
+                                            width:
+                                                classroom.progress_percentage +
+                                                '%',
+                                        }"
                                     ></div>
                                 </div>
-                                <div
-                                    class="flex justify-between mt-2 text-xs font-bold text-indigo-200 uppercase tracking-wide"
-                                >
-                                    <span>Mulai</span>
-                                    <span
-                                        >{{
-                                            Math.round(
-                                                (classroom.session /
-                                                    classroom.total_sessions) *
-                                                    100
-                                            )
-                                        }}% Selesai</span
-                                    >
-                                </div>
                             </div>
-                            <ClockIcon
-                                class="absolute right-[-20px] bottom-[-20px] w-64 h-64 text-white opacity-10 rotate-12"
-                            />
                         </div>
 
                         <div
-                            class="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col justify-center items-center text-center"
+                            class="bg-indigo-600 rounded-[2.5rem] p-8 text-white shadow-xl shadow-indigo-100"
                         >
-                            <div
-                                class="w-16 h-16 bg-green-50 text-green-600 rounded-full flex items-center justify-center mb-4"
+                            <h4
+                                class="font-bold text-lg mb-4 flex items-center gap-2"
                             >
-                                <ClipboardDocumentListIcon class="w-8 h-8" />
-                            </div>
-                            <h4 class="font-bold text-slate-800 text-lg">
-                                Buat Tugas Baru
-                            </h4>
-                            <p class="text-sm text-slate-500 mb-4">
-                                Berikan evaluasi untuk pertemuan ini.
-                            </p>
-                            <button
-                                class="w-full py-2.5 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700 transition"
-                            >
-                                + Tambah Tugas
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div v-if="activeTab === 'students'">
-                    <div
-                        class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden"
-                    >
-                        <div
-                            class="px-6 py-5 border-b border-slate-50 flex justify-between items-center"
-                        >
-                            <h3 class="font-bold text-lg text-slate-800">
-                                Daftar Siswa ({{ students.length }})
-                            </h3>
-                            <button
-                                class="text-sm text-indigo-600 font-bold hover:underline"
-                            >
-                                Export Data
-                            </button>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table
-                                class="w-full text-left text-sm text-slate-600"
-                            >
-                                <thead
-                                    class="bg-slate-50 text-slate-500 uppercase tracking-wider font-bold text-xs"
-                                >
-                                    <tr>
-                                        <th class="px-6 py-4">Nama Siswa</th>
-                                        <th class="px-6 py-4">NIS</th>
-                                        <th class="px-6 py-4">
-                                            Status Hari Ini
-                                        </th>
-                                        <th class="px-6 py-4 text-right">
-                                            Aksi
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-slate-50">
-                                    <tr
-                                        v-for="student in students"
-                                        :key="student.id"
-                                        class="hover:bg-slate-50/50 transition"
-                                    >
-                                        <td
-                                            class="px-6 py-4 font-medium text-slate-800 flex items-center gap-3"
-                                        >
-                                            <div
-                                                class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs"
-                                            >
-                                                {{
-                                                    student.name
-                                                        .substring(0, 2)
-                                                        .toUpperCase()
-                                                }}
-                                            </div>
-                                            {{ student.name }}
-                                        </td>
-                                        <td class="px-6 py-4 font-mono">
-                                            {{ student.nis }}
-                                        </td>
-                                        <td class="px-6 py-4">
-                                            <span
-                                                class="px-2.5 py-1 rounded-full text-xs font-bold"
-                                                :class="
-                                                    student.status === 'Hadir'
-                                                        ? 'bg-green-100 text-green-700'
-                                                        : 'bg-red-100 text-red-700'
-                                                "
-                                            >
-                                                {{ student.status }}
-                                            </span>
-                                        </td>
-                                        <td class="px-6 py-4 text-right">
-                                            <button
-                                                class="text-slate-400 hover:text-indigo-600"
-                                            >
-                                                <EllipsisHorizontalIcon
-                                                    class="w-5 h-5"
-                                                />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <div v-if="activeTab === 'assignments'">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="font-bold text-lg text-slate-800">
-                            Daftar Tugas
-                        </h3>
-                        <button
-                            class="inline-flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-indigo-700 transition"
-                        >
-                            <PlusIcon class="w-4 h-4" /> Buat Tugas
-                        </button>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div
-                            v-for="task in assignments"
-                            :key="task.id"
-                            class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition group"
-                        >
-                            <div class="flex justify-between items-start mb-3">
-                                <div
-                                    class="bg-orange-50 p-2.5 rounded-xl text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition"
-                                >
-                                    <ClipboardDocumentListIcon
-                                        class="w-6 h-6"
-                                    />
-                                </div>
-                                <span
-                                    class="text-[10px] font-bold px-2 py-1 rounded-full uppercase"
-                                    :class="
-                                        task.status === 'active'
-                                            ? 'bg-green-100 text-green-700'
-                                            : 'bg-slate-100 text-slate-500'
-                                    "
-                                >
-                                    {{
-                                        task.status === "active"
-                                            ? "Sedang Berjalan"
-                                            : "Selesai"
-                                    }}
-                                </span>
-                            </div>
-                            <h4 class="font-bold text-slate-800 text-lg mb-1">
-                                {{ task.title }}
+                                <InformationCircleIcon
+                                    class="w-5 h-5 text-indigo-200"
+                                />
+                                Informasi Kelas
                             </h4>
                             <p
-                                class="text-xs text-slate-500 mb-4 flex items-center gap-1"
+                                class="text-indigo-100 text-sm leading-relaxed font-medium"
                             >
-                                <ClockIcon class="w-3 h-3" /> Tenggat:
-                                {{ task.deadline }}
+                                {{ classroom.description }}
                             </p>
-
-                            <div
-                                class="w-full bg-slate-100 rounded-full h-2 mb-2 overflow-hidden"
-                            >
-                                <div
-                                    class="bg-orange-500 h-full rounded-full"
-                                    :style="`width: ${
-                                        (task.submitted / task.total) * 100
-                                    }%`"
-                                ></div>
-                            </div>
-                            <div
-                                class="flex justify-between text-xs font-bold text-slate-500"
-                            >
-                                <span
-                                    >{{ task.submitted }} /
-                                    {{ task.total }} Mengumpulkan</span
-                                >
-                                <span
-                                    >{{
-                                        Math.round(
-                                            (task.submitted / task.total) * 100
-                                        )
-                                    }}%</span
-                                >
-                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div v-if="activeTab === 'materials'">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="font-bold text-lg text-slate-800">
-                            Bahan Ajar & Modul
-                        </h3>
-                        <button
-                            class="inline-flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-indigo-700 transition"
-                        >
-                            <PlusIcon class="w-4 h-4" /> Upload Materi
-                        </button>
-                    </div>
-
-                    <div class="space-y-3">
-                        <div
-                            v-for="file in materials"
-                            :key="file.id"
-                            class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between hover:border-indigo-200 transition"
-                        >
-                            <div class="flex items-center gap-4">
-                                <div
-                                    class="w-12 h-12 rounded-xl flex items-center justify-center"
-                                    :class="
-                                        file.type === 'pdf'
-                                            ? 'bg-red-50 text-red-600'
-                                            : 'bg-blue-50 text-blue-600'
-                                    "
+                <div
+                    v-if="activeTab === 'students'"
+                    class="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden"
+                >
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead>
+                                <tr
+                                    class="bg-slate-50/50 text-slate-400 uppercase font-black text-[10px] tracking-[0.1em] border-b border-slate-100"
                                 >
-                                    <DocumentTextIcon
-                                        v-if="file.type === 'pdf'"
-                                        class="w-6 h-6"
-                                    />
-                                    <VideoCameraIcon v-else class="w-6 h-6" />
-                                </div>
-                                <div>
-                                    <h4 class="font-bold text-slate-800">
-                                        {{ file.title }}
-                                    </h4>
-                                    <p class="text-xs text-slate-500">
-                                        {{ file.size }} • {{ file.date }}
-                                    </p>
-                                </div>
-                            </div>
-                            <button
-                                class="p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-indigo-600 transition"
-                            >
-                                <ArrowDownTrayIcon class="w-5 h-5" />
-                            </button>
+                                    <th class="px-6 py-5 w-16 text-center">
+                                        No
+                                    </th>
+                                    <th class="px-4 py-5">Nama Lengkap</th>
+                                    <th class="px-4 py-5">NIS / NISN</th>
+                                    <th class="px-4 py-5">Tempat, Tgl Lahir</th>
+                                    <th class="px-6 py-5 text-center">
+                                        No. WA
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50">
+                                <tr
+                                    v-for="(student, index) in students"
+                                    :key="student.id"
+                                    class="hover:bg-slate-50/50 transition group"
+                                >
+                                    <td
+                                        class="px-6 py-5 text-center text-slate-400 font-bold"
+                                    >
+                                        {{ index + 1 }}
+                                    </td>
+                                    <td class="px-4 py-5">
+                                        <div class="flex items-center gap-3">
+                                            <div
+                                                class="w-9 h-9 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-xs uppercase border border-indigo-100 shrink-0"
+                                            >
+                                                {{
+                                                    student.name?.substring(
+                                                        0,
+                                                        2
+                                                    )
+                                                }}
+                                            </div>
+                                            <span
+                                                class="font-bold text-slate-700 uppercase tracking-tight text-[11px]"
+                                                >{{ student.name }}</span
+                                            >
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-5">
+                                        <div class="flex flex-col">
+                                            <span
+                                                class="text-xs font-mono font-bold text-slate-600"
+                                                >{{ student.nis || "-" }}</span
+                                            >
+                                            <span
+                                                class="text-[10px] text-slate-400 italic"
+                                                >NISN:
+                                                {{ student.nisn || "-" }}</span
+                                            >
+                                        </div>
+                                    </td>
+                                    <td
+                                        class="px-4 py-5 text-slate-600 text-xs font-medium"
+                                    >
+                                        {{ student.pob || "-" }},
+                                        {{ student.dob || "-" }}
+                                    </td>
+                                    <td class="px-6 py-5 text-center">
+                                        <a
+                                            v-if="student.phone"
+                                            :href="
+                                                'https://wa.me/' + student.phone
+                                            "
+                                            target="_blank"
+                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-wider hover:bg-emerald-600 hover:text-white transition-all shadow-sm shadow-emerald-100"
+                                        >
+                                            <svg
+                                                class="w-3.5 h-3.5"
+                                                fill="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"
+                                                />
+                                            </svg>
+                                            Kirim Pesan
+                                        </a>
+                                        <span
+                                            v-else
+                                            class="text-slate-300 text-[10px] font-bold italic"
+                                            >Tidak Ada No.</span
+                                        >
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div
+                    v-if="activeTab === 'assignments'"
+                    class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                >
+                    <div
+                        v-for="task in assignments"
+                        :key="task.id"
+                        class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition"
+                    >
+                        <div
+                            class="p-3 bg-orange-50 rounded-2xl text-orange-600 w-fit mb-4"
+                        >
+                            <ClipboardDocumentListIcon class="w-6 h-6" />
                         </div>
+                        <h4
+                            class="font-bold text-slate-800 mb-1 line-clamp-1 uppercase text-sm tracking-tight"
+                        >
+                            {{ task.title }}
+                        </h4>
+                        <p
+                            class="text-xs text-slate-400 font-medium mb-4 italic"
+                        >
+                            Selesai pada: {{ task.deadline }}
+                        </p>
+                        <div
+                            class="flex items-center justify-between text-[10px] font-black text-slate-500 uppercase tracking-widest pt-4 border-t border-slate-50"
+                        >
+                            <span>Tugas Ke-{{ task.id }}</span>
+                            <span class="text-indigo-600"
+                                >{{ task.submitted }} /
+                                {{ task.total }} Siswa</span
+                            >
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    v-if="activeTab === 'materials'"
+                    class="space-y-4 max-w-4xl"
+                >
+                    <div
+                        v-for="file in materials"
+                        :key="file.id"
+                        class="bg-white p-5 rounded-2xl border border-slate-100 flex items-center justify-between hover:border-indigo-200 transition"
+                    >
+                        <div class="flex items-center gap-4">
+                            <div
+                                class="w-12 h-12 rounded-xl flex items-center justify-center bg-blue-50 text-blue-600"
+                            >
+                                <BookOpenIcon class="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h4
+                                    class="font-bold text-slate-800 text-sm uppercase"
+                                >
+                                    {{ file.title }}
+                                </h4>
+                                <p
+                                    class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5"
+                                >
+                                    Materi Sesi {{ file.date }}
+                                </p>
+                            </div>
+                        </div>
+                        <a
+                            :href="file.file_url"
+                            download
+                            class="p-2 bg-slate-50 text-slate-400 rounded-lg hover:text-indigo-600 hover:bg-indigo-50 transition"
+                        >
+                            <ArrowDownTrayIcon class="w-5 h-5" />
+                        </a>
                     </div>
                 </div>
             </div>

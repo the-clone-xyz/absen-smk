@@ -112,7 +112,6 @@ class TeacherController extends Controller
         ]);
     }
 
-    // --- FITUR DETAIL KELAS (PUSAT KOMANDO) ---
     public function show($id)
     {
         $teacherId = auth()->user()->teacher->id;
@@ -121,70 +120,71 @@ class TeacherController extends Controller
             ->where('teacher_id', $teacherId)
             ->firstOrFail();
 
-        // Hitung Pertemuan
         $sessionCount = Journal::where('schedule_id', $schedule->id)->count();
         $currentSession = $sessionCount + 1;
-        $today = now()->format('Y-m-d');
+        $totalSessions = 16; 
+        
+        $progressPercentage = ($sessionCount / $totalSessions) * 100;
 
-        // 1. Data Siswa & Status Absen
-        $students = $schedule->kelas->students->map(function ($student) use ($today) {
-            $attendance = Attendance::where('user_id', $student->user_id)
-                ->whereDate('created_at', $today)
-                ->first();
-
+        // 1. Data Lengkap Siswa (NIS, NISN, TTL, No WA)
+        $students = $schedule->kelas->students->map(function ($student) {
             return [
-                'id' => $student->id,
-                'name' => $student->name,
-                'nis' => $student->nis ?? '-',
-                'status' => $attendance ? $attendance->status : 'Belum Absen',
+                'id'    => $student->id,
+                'name'  => $student->name,
+                'nis'   => $student->nis ?? '-',
+                'nisn'  => $student->nisn ?? '-',
+                'pob'   => $student->pob ?? '-', // Tempat Lahir
+                'dob'   => $student->dob ? \Carbon\Carbon::parse($student->dob)->translatedFormat('d F Y') : '-', // Tanggal Lahir
+                'phone' => $student->phone ?? null, // No WA
             ];
         });
 
-        // 2. Data Tugas (Dari Task Model)
+        // 2. Data Rekap Tugas
         $assignments = Task::where('kelas_id', $schedule->class_id)
             ->where('subject_id', $schedule->subject_id)
             ->latest()
             ->get()
             ->map(function ($task) use ($schedule) {
                 return [
-                    'id' => $task->id,
-                    'title' => $task->title,
-                    'deadline' => Carbon::parse($task->deadline)->translatedFormat('d M Y'),
+                    'id'        => $task->id,
+                    'title'     => $task->title,
+                    'deadline'  => \Carbon\Carbon::parse($task->deadline)->translatedFormat('d M Y'),
                     'submitted' => $task->submissions ? $task->submissions->count() : 0,
-                    'total' => $schedule->kelas->students->count(),
-                    'status' => $task->deadline > now() ? 'active' : 'closed',
+                    'total'     => $schedule->kelas->students->count(),
+                    'status'    => $task->deadline > now() ? 'active' : 'closed',
                 ];
             });
 
-        // 3. Data Materi (Dari Jurnal Harian)
+        // 3. Data Bank Materi
         $materials = Journal::where('schedule_id', $schedule->id)
             ->whereNotNull('module_path')
             ->latest()
             ->get()
             ->map(function ($journal) {
                 return [
-                    'id' => $journal->id,
-                    'title' => $journal->topic,
-                    'type' => pathinfo($journal->module_path, PATHINFO_EXTENSION),
-                    'size' => 'Unduh', 
-                    'date' => Carbon::parse($journal->date)->translatedFormat('d M Y'),
+                    'id'       => $journal->id,
+                    'title'    => $journal->topic,
+                    'type'     => pathinfo($journal->module_path, PATHINFO_EXTENSION),
+                    'date'     => \Carbon\Carbon::parse($journal->date)->translatedFormat('d M Y'),
                     'file_url' => asset('storage/' . $journal->module_path)
                 ];
             });
 
         return Inertia::render('Teacher/ClassroomShow', [
             'classroom' => [
-                'id' => $schedule->id,
-                'name' => $schedule->kelas->name,
-                'subject' => $schedule->subject->name,
-                'description' => "Kelas " . $schedule->kelas->name . " - " . $schedule->subject->name,
-                'session_current' => $currentSession,
-                'session_total' => 16, 
-                'student_count' => $students->count(),
+                'id'                  => $schedule->id,
+                'name'                => $schedule->kelas->name,
+                'subject'             => $schedule->subject->name,
+                'description'         => "Kelas " . $schedule->kelas->name . " - " . $schedule->subject->name,
+                'session_completed'   => $sessionCount,
+                'session_current'     => $currentSession,
+                'session_total'       => $totalSessions,
+                'progress_percentage' => round($progressPercentage),
+                'student_count'       => $students->count(),
             ],
-            'students' => $students,
+            'students'    => $students,
             'assignments' => $assignments,
-            'materials' => $materials,
+            'materials'   => $materials,
         ]);
     }
 
