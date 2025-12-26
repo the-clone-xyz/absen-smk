@@ -31,6 +31,7 @@ const props = defineProps({
     statistik: Object,
     jadwal: Array,
     jadwalKalender: Object,
+    attendanceStatus: String,
     kelas: {
         type: Array,
         default: () => [], // Default array kosong agar aman jika data belum masuk
@@ -55,6 +56,20 @@ const scrollRight = () => {
     if (classContainer.value) {
         classContainer.value.scrollBy({ left: 300, behavior: "smooth" });
     }
+};
+
+// Helper sederhana untuk warna status
+const getStatusColor = (status) => {
+    if (status === "Hadir") return "bg-emerald-500";
+    if (status === "Izin" || status === "Sakit") return "bg-amber-500";
+    if (status === "Alpha") return "bg-rose-500";
+    return "bg-slate-400"; // Default / Belum Absen
+};
+
+const getPingColor = (status) => {
+    if (status === "Hadir") return "bg-emerald-400";
+    if (status === "Izin" || status === "Sakit") return "bg-amber-400";
+    return "hidden"; // Tidak perlu ping jika belum absen/alpha
 };
 </script>
 
@@ -325,7 +340,7 @@ const scrollRight = () => {
                             class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden flex flex-col h-[400px]"
                         >
                             <div
-                                class="p-4  flex-grow overflow-y-auto custom-scrollbar"
+                                class="p-4 flex-grow overflow-y-auto custom-scrollbar"
                             >
                                 <TeacherSchedule :jadwal="jadwal" />
                             </div>
@@ -449,15 +464,28 @@ const scrollRight = () => {
                             <div class="inline-flex items-center gap-2">
                                 <span class="relative flex h-2.5 w-2.5">
                                     <span
-                                        class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"
+                                        class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
+                                        :class="getPingColor(attendanceStatus)"
                                     ></span>
+
                                     <span
-                                        class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"
+                                        class="relative inline-flex rounded-full h-2.5 w-2.5"
+                                        :class="
+                                            getStatusColor(attendanceStatus)
+                                        "
                                     ></span>
                                 </span>
-                                <span class="text-sm font-bold text-slate-700"
-                                    >Aktif / Hadir</span
+
+                                <span
+                                    class="text-sm font-bold"
+                                    :class="
+                                        attendanceStatus === 'Belum Absen'
+                                            ? 'text-slate-400 italic'
+                                            : 'text-slate-700'
+                                    "
                                 >
+                                    {{ attendanceStatus }}
+                                </span>
                             </div>
                         </div>
                         <div
