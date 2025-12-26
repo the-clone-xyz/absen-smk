@@ -15,6 +15,7 @@ import {
     ExclamationCircleIcon,
     ChevronLeftIcon,
     ChevronRightIcon,
+    EyeIcon,
 } from "@heroicons/vue/24/solid";
 
 const props = defineProps({
@@ -26,7 +27,7 @@ const props = defineProps({
 const search = ref(props.filters.search || "");
 const showUploadModal = ref(false);
 const tempUploads = ref([]);
-const fileInputKey = ref(0); // Kunci rahasia untuk mereset input file
+const fileInputKey = ref(0);
 
 const form = useForm({
     title: "",
@@ -36,18 +37,17 @@ const form = useForm({
     file: null,
 });
 
-// --- PERBAIKAN 1: RESET DATA TOTAL SAAT BUKA/TUTUP ---
 const openUploadModal = () => {
     form.reset();
     form.clearErrors();
-    fileInputKey.value++; // Reset input file HTML
+    fileInputKey.value++;
     showUploadModal.value = true;
 };
 
 const closeModal = () => {
     showUploadModal.value = false;
     setTimeout(() => {
-        form.reset(); // Hapus sisa data saat animasi tutup selesai
+        form.reset();
         form.clearErrors();
     }, 300);
 };
@@ -76,7 +76,7 @@ const submitUpload = () => {
         errorMessage: "",
     });
 
-    closeModal(); // Tutup & Reset modal
+    closeModal();
 
     form.post(route("ebooks.store"), {
         preserveScroll: true,
@@ -106,11 +106,8 @@ const submitUpload = () => {
     });
 };
 
-// --- PERBAIKAN 2: LINK PAGINATION YANG AMAN ---
 const paginationLinks = computed(() => {
-    // Ambil links dari meta (Resource) atau root (Standard)
     const links = props.ebooks.meta?.links || props.ebooks.links || [];
-    // Filter agar pagination terlihat rapi (opsional, membuang link text yang duplikat)
     return links;
 });
 
@@ -152,9 +149,9 @@ const isPdf = (filename) => filename && filename.toLowerCase().endsWith(".pdf");
             ></div>
         </div>
 
-        <div class="relative z-10 min-h-screen pb-10">
+        <div class="relative z-10 min-h-screen pb-20">
             <div
-                class="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm"
+                class="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-30 shadow-sm"
             >
                 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
                     <div
@@ -162,7 +159,7 @@ const isPdf = (filename) => filename && filename.toLowerCase().endsWith(".pdf");
                     >
                         <div class="flex items-center gap-3 w-full md:w-auto">
                             <div
-                                class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-blue-200 shadow-lg"
+                                class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-blue-200 shadow-lg shrink-0"
                             >
                                 <BookOpenIcon class="w-6 h-6" />
                             </div>
@@ -197,7 +194,7 @@ const isPdf = (filename) => filename && filename.toLowerCase().endsWith(".pdf");
                         <button
                             v-if="canManage"
                             @click="openUploadModal"
-                            class="hidden md:flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-full text-sm font-bold transition-all shadow-md hover:shadow-lg active:scale-95"
+                            class="hidden md:flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-full text-sm font-bold transition-all shadow-md hover:shadow-lg active:scale-95 whitespace-nowrap"
                         >
                             <PlusIcon class="w-5 h-5" />
                             <span>Upload Buku</span>
@@ -229,7 +226,7 @@ const isPdf = (filename) => filename && filename.toLowerCase().endsWith(".pdf");
                     <div
                         v-for="upload in tempUploads"
                         :key="upload.id"
-                        class="relative group bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all"
+                        class="relative group bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"
                     >
                         <div class="aspect-[3/4] bg-gray-100 relative">
                             <img
@@ -245,7 +242,6 @@ const isPdf = (filename) => filename && filename.toLowerCase().endsWith(".pdf");
                                     class="w-12 h-12 text-gray-300 animate-pulse"
                                 />
                             </div>
-
                             <div
                                 class="absolute inset-0 flex flex-col items-center justify-center p-3 bg-black/10"
                             >
@@ -353,20 +349,21 @@ const isPdf = (filename) => filename && filename.toLowerCase().endsWith(".pdf");
                             <div
                                 class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center gap-2 p-4 backdrop-blur-[1px]"
                             >
-                                <Link
-                                    :href="route('ebooks.read', book.id)"
-                                    class="bg-white hover:bg-gray-100 text-gray-900 w-full py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1 shadow-lg transition-transform hover:scale-105"
-                                >
-                                    <DocumentTextIcon class="w-3 h-3" /> Baca
-                                    Scroll
-                                </Link>
-                                <Link
+                                <a
                                     v-if="isPdf(book.file_path)"
                                     :href="route('ebooks.readFlip', book.id)"
-                                    class="bg-blue-600 hover:bg-blue-700 text-white w-full py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1 shadow-lg transition-transform hover:scale-105"
+                                    class="bg-blue-600 hover:bg-blue-700 text-white w-full py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1 shadow-lg transition-transform hover:scale-105 cursor-pointer"
                                 >
                                     <BookOpenIcon class="w-3 h-3" /> Flipbook
-                                </Link>
+                                </a>
+
+                                <a
+                                    :href="route('ebooks.read', book.id)"
+                                    target="_blank"
+                                    class="bg-white hover:bg-gray-100 text-gray-900 w-full py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1 shadow-lg transition-transform hover:scale-105 cursor-pointer"
+                                >
+                                    <EyeIcon class="w-3 h-3" /> Baca (Scroll)
+                                </a>
                             </div>
                         </div>
 
@@ -417,10 +414,10 @@ const isPdf = (filename) => filename && filename.toLowerCase().endsWith(".pdf");
 
                 <div
                     v-if="paginationLinks.length > 3"
-                    class="mt-12 flex justify-center"
+                    class="mt-12 flex justify-center pb-8"
                 >
                     <div
-                        class="inline-flex items-center gap-1 bg-white p-2 rounded-full shadow-sm border border-gray-200"
+                        class="flex items-center gap-1 bg-white p-2 rounded-full shadow-sm border border-gray-200"
                     >
                         <template
                             v-for="(link, key) in paginationLinks"
@@ -444,7 +441,6 @@ const isPdf = (filename) => filename && filename.toLowerCase().endsWith(".pdf");
                                 /></span>
                                 <span v-else v-html="link.label"></span>
                             </Link>
-
                             <div
                                 v-else
                                 class="flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold text-gray-300 cursor-not-allowed"

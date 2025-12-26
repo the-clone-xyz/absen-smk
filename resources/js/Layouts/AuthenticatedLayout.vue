@@ -6,6 +6,7 @@ import NavLink from "@/Components/NavLink.vue";
 import ResponsiveNavLink from "@/Components/ResponsiveNavLink.vue";
 import { Link, usePage } from "@inertiajs/vue3";
 import { useSwal } from "@/Composables/useSwal";
+import Footer from "@/Components/Footer.vue";
 import {
     CheckCircleIcon,
     XCircleIcon,
@@ -17,19 +18,17 @@ const showingNavigationDropdown = ref(false);
 const page = usePage();
 const showFlash = ref(false);
 
-// Helper User & Role
 const user = computed(() => page.props.auth.user);
 const role = computed(() => user.value?.role);
 
-// Logika Alert Pintar (Auto Hide)
 watch(
     () => page.props.flash,
     (newFlash) => {
         if (newFlash.success) {
-            Swal.toast("success", newFlash.success); // Panggil Toast Sukses
+            Swal.toast("success", newFlash.success);
         }
         if (newFlash.error) {
-            Swal.toast("error", newFlash.error); // Panggil Toast Error
+            Swal.toast("error", newFlash.error);
         }
     },
     { deep: true }
@@ -399,6 +398,7 @@ watch(
                     <slot />
                 </div>
             </main>
+            <Footer />
         </div>
     </div>
 </template>
