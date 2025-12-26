@@ -28,6 +28,13 @@ class TeacherController extends Controller
         $hariIni = Carbon::now()->isoFormat('dddd');
         $tanggalIni = Carbon::now()->toDateString();
 
+        // --- TAMBAHAN: Cek Status Absensi Guru Hari Ini ---
+        $guruAttendance = Attendance::where('user_id', $user->id)
+            ->where('date', $tanggalIni)
+            ->first();
+        $statusGuru = $guruAttendance ? $guruAttendance->status : 'Belum Absen';
+        // ---------------------------------------------------
+
         $jadwalHariIni = Schedule::with(['kelas', 'subject'])
             ->where('teacher_id', $teacher->id)
             ->where('day', $hariIni)
@@ -50,6 +57,7 @@ class TeacherController extends Controller
 
         return Inertia::render('Teacher/Dashboard', [
             'auth' => ['user' => $user],
+            'attendanceStatus' => $statusGuru, // <-- Data status dikirim ke frontend
             'jadwal' => $jadwalHariIni,
             'jadwalKalender' => $jadwalBulanan,
             'statistik' => [
