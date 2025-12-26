@@ -11,9 +11,10 @@ import {
     ArrowPathIcon,
     ExclamationTriangleIcon,
     CheckCircleIcon,
+    SignalIcon, // Icon baru
 } from "@heroicons/vue/24/solid";
 
-// --- PROPS DARI CONTROLLER ---
+// --- PROPS ---
 const props = defineProps({
     schoolSettings: Object, // { lat, lng, radius }
 });
@@ -28,8 +29,9 @@ const videoRef = ref(null);
 const photoPreview = ref(null);
 const qrResult = ref(null);
 const scannerError = ref(null);
+const isGpsLoading = ref(true); // Indikator loading GPS
 
-// VARIABLE STREAM & GPS
+// Variable Stream
 let html5QrCode = null;
 let currentStream = null;
 let geoWatcherId = null;
@@ -42,6 +44,7 @@ const form = useForm({
     qr_code: "",
 });
 
+// --- UTILS ---
 const stopAllCameras = async () => {
     if (currentStream) {
         currentStream.getTracks().forEach((track) => track.stop());
@@ -68,59 +71,88 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
     return Math.round(R * c);
 };
 
-// --- REALTIME TRACKING ---
-const startLocationTracking = () => {
-    if (navigator.geolocation) {
-        if (geoWatcherId) navigator.geolocation.clearWatch(geoWatcherId);
+// Helper Update Posisi
+const updatePosition = (position) => {
+    isGpsLoading.value = false;
+    locationError.value = null;
+    coordinates.value = position.coords;
+    accuracy.value = Math.round(position.coords.accuracy);
 
-        locationError.value = "Sedang mencari satelit GPS...";
+    form.latitude = position.coords.latitude;
+    form.longitude = position.coords.longitude;
 
-        geoWatcherId = navigator.geolocation.watchPosition(
-            (position) => {
-                locationError.value = null;
-                coordinates.value = position.coords;
-                accuracy.value = Math.round(position.coords.accuracy);
-
-                // Update Form
-                form.latitude = position.coords.latitude;
-                form.longitude = position.coords.longitude;
-
-                // Hitung Jarak Realtime
-                if (props.schoolSettings) {
-                    currentDistance.value = calculateDistance(
-                        position.coords.latitude,
-                        position.coords.longitude,
-                        props.schoolSettings.lat,
-                        props.schoolSettings.lng
-                    );
-                }
-            },
-            (error) => {
-                console.error(error);
-                locationError.value = "Gagal mengambil lokasi GPS.";
-            },
-            {
-                enableHighAccuracy: true,
-                timeout: 15000,
-                maximumAge: 0,
-            }
+    if (props.schoolSettings) {
+        currentDistance.value = calculateDistance(
+            position.coords.latitude,
+            position.coords.longitude,
+            props.schoolSettings.lat,
+            props.schoolSettings.lng
         );
-    } else {
-        locationError.value = "Browser tidak mendukung GPS.";
     }
+};
+
+// --- GPS LOGIC (DIPERCEPAT) ---
+const startLocationTracking = () => {
+    if (!navigator.geolocation) {
+        locationError.value = "Browser tidak mendukung GPS.";
+        return;
+    }
+
+    isGpsLoading.value = true;
+
+    // STRATEGI 1: Ambil lokasi Cache (Cepat - Hitungan detik)
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            console.log("Lokasi Cepat didapat");
+            updatePosition(position);
+        },
+        (err) => {
+            console.log("Lokasi cepat gagal, menunggu GPS akurasi tinggi...");
+        },
+        {
+            maximumAge: 60000, // Terima lokasi cache sampai 1 menit lalu
+            timeout: 3000, // Tunggu cuma 3 detik
+            enableHighAccuracy: false,
+        }
+    );
+
+    // STRATEGI 2: Nyalakan Watcher (Akurasi Tinggi - Realtime)
+    // Ini akan menimpa data lokasi cepat jika sudah terkunci
+    if (geoWatcherId) navigator.geolocation.clearWatch(geoWatcherId);
+
+    geoWatcherId = navigator.geolocation.watchPosition(
+        (position) => updatePosition(position),
+        (error) => {
+            // Hanya tampilkan error jika belum pernah dapat lokasi sama sekali
+            if (!coordinates.value) {
+                console.error(error);
+                locationError.value =
+                    "Gagal mengunci GPS. Pastikan izin lokasi aktif.";
+                isGpsLoading.value = false;
+            }
+        },
+        {
+            enableHighAccuracy: true, // Wajib ON untuk presisi absen
+            timeout: 15000,
+            maximumAge: 0, // Jangan terima cache untuk validasi final
+        }
+    );
 };
 
 const isWithinRadius = computed(() => {
     const maxRadius = props.schoolSettings?.radius || 50;
-    return currentDistance.value <= maxRadius + 20; // Toleransi frontend 20m
+    // Jika belum ada koordinat, anggap false
+    if (!coordinates.value) return false;
+    return currentDistance.value <= maxRadius + 20; // Toleransi 20m
 });
 
+// --- CAMERA LOGIC ---
 const startCamera = async () => {
     if (mode.value !== "face") return;
     await stopAllCameras();
     try {
         const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: "user" }, // Pakai kamera depan
+            video: { facingMode: "user" },
         });
         currentStream = stream;
         if (videoRef.value) videoRef.value.srcObject = stream;
@@ -133,7 +165,6 @@ const takePhoto = () => {
     const canvas = document.createElement("canvas");
     canvas.width = videoRef.value.videoWidth;
     canvas.height = videoRef.value.videoHeight;
-    // Mirror effect
     const ctx = canvas.getContext("2d");
     ctx.translate(canvas.width, 0);
     ctx.scale(-1, 1);
@@ -146,6 +177,7 @@ const takePhoto = () => {
     }, "image/jpeg");
 };
 
+// --- QR LOGIC ---
 const startQRScanner = async () => {
     scannerError.value = null;
     await stopAllCameras();
@@ -156,15 +188,15 @@ const startQRScanner = async () => {
         qrbox: { width: 250, height: 250 },
         aspectRatio: 1.0,
     };
+
     html5QrCode
         .start(
-            { facingMode: "environment" }, // Kamera belakang
+            { facingMode: "environment" },
             config,
             onScanSuccess,
             onScanFailure
         )
         .catch(() => {
-            // Fallback kamera depan jika belakang gagal
             html5QrCode.start(
                 { facingMode: "user" },
                 config,
@@ -175,7 +207,6 @@ const startQRScanner = async () => {
 };
 
 const onScanSuccess = (decodedText) => {
-    // Mode QR: Langsung submit tanpa cek radius!
     stopAllCameras();
     qrResult.value = decodedText;
     form.qr_code = decodedText;
@@ -193,11 +224,8 @@ const switchMode = async (newMode) => {
     await stopAllCameras();
 
     if (newMode === "face") {
-        // startLocationTracking(); // GPS sudah jalan terus
         setTimeout(startCamera, 500);
     } else {
-        // PERBAIKAN: Jangan matikan GPS di sini, karena backend butuh data lat/long
-        // if (geoWatcherId) navigator.geolocation.clearWatch(geoWatcherId);
         startQRScanner();
     }
 };
@@ -207,7 +235,6 @@ const submitAbsen = () => {
         forceFormData: true,
         onSuccess: () => stopAllCameras(),
         onError: () => {
-            // Jika gagal di mode QR, nyalakan lagi scannernya
             if (mode.value === "qr") startQRScanner();
         },
     });
@@ -282,37 +309,57 @@ onBeforeUnmount(() => {
                         </div>
 
                         <div
-                            class="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-md bg-black/40 border border-white/20 text-white text-sm font-medium z-20 whitespace-nowrap"
+                            class="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-md bg-black/60 border border-white/20 text-white text-sm font-medium z-20 whitespace-nowrap shadow-lg"
                         >
-                            <MapPinIcon class="w-4 h-4 text-yellow-400" />
-                            <span v-if="coordinates"
-                                >Jarak: {{ currentDistance }}m (±{{
-                                    accuracy
-                                }}m)</span
+                            <div
+                                v-if="!coordinates"
+                                class="flex items-center gap-2"
                             >
-                            <span v-else class="animate-pulse"
-                                >Mencari Satelit...</span
-                            >
+                                <span class="relative flex h-3 w-3">
+                                    <span
+                                        class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"
+                                    ></span>
+                                    <span
+                                        class="relative inline-flex rounded-full h-3 w-3 bg-red-500"
+                                    ></span>
+                                </span>
+                                <span class="animate-pulse"
+                                    >Mencari GPS...</span
+                                >
+                            </div>
+                            <div v-else class="flex items-center gap-2">
+                                <MapPinIcon
+                                    class="w-4 h-4"
+                                    :class="
+                                        isWithinRadius
+                                            ? 'text-green-400'
+                                            : 'text-red-400'
+                                    "
+                                />
+                                <span
+                                    >{{ currentDistance }}m (Akurasi ±{{
+                                        accuracy
+                                    }}m)</span
+                                >
+                            </div>
                         </div>
                     </div>
 
                     <div
                         v-else
-                        class="absolute inset-0 w-full h-full flex flex-col items-center justify-center"
+                        class="absolute inset-0 w-full h-full flex flex-col items-center justify-center bg-gray-900"
                     >
-                        <div id="reader" class="w-full h-full bg-black"></div>
-
+                        <div id="reader" class="w-full h-full"></div>
                         <div
                             class="absolute inset-0 pointer-events-none border-[50px] border-black/50 z-10"
                         ></div>
                         <div
                             class="absolute z-20 w-64 h-64 border-4 border-green-500 rounded-2xl animate-pulse"
                         ></div>
-
                         <p
-                            class="absolute bottom-10 text-white font-bold text-sm z-20 bg-black/50 px-4 py-2 rounded-full backdrop-blur-sm"
+                            class="absolute bottom-10 text-white font-bold text-sm z-20 bg-black/60 px-4 py-2 rounded-full backdrop-blur-sm"
                         >
-                            Arahkan QR Code ke dalam kotak hijau
+                            Arahkan QR Code Guru ke kotak
                         </p>
                     </div>
                 </div>
@@ -349,18 +396,19 @@ onBeforeUnmount(() => {
                         class="flex-1 p-6 flex flex-col justify-center space-y-6"
                     >
                         <div class="text-center lg:text-left">
-                            <h3 class="text-2xl font-bold text-gray-800">
-                                {{
-                                    mode === "face"
-                                        ? "Verifikasi Lokasi"
-                                        : "Scan Kode QR"
-                                }}
+                            <h3
+                                class="text-2xl font-bold text-gray-800 flex items-center gap-2 justify-center lg:justify-start"
+                            >
+                                <span v-if="mode === 'face'"
+                                    >📸 Verifikasi Lokasi</span
+                                >
+                                <span v-else>📱 Scan Kode QR</span>
                             </h3>
                             <p class="text-gray-500 text-sm mt-1">
                                 {{
                                     mode === "face"
-                                        ? "Sistem memastikan Anda berada di area sekolah."
-                                        : "Scan kode QR dinamis yang ditampilkan guru."
+                                        ? "Pastikan Anda berada di area sekolah."
+                                        : "Gunakan untuk absen cepat atau kegiatan."
                                 }}
                             </p>
                         </div>
@@ -394,25 +442,27 @@ onBeforeUnmount(() => {
                         >
                             <div class="flex justify-between items-center mb-2">
                                 <span
-                                    class="text-xs font-bold text-gray-500 uppercase"
-                                    >Akurasi GPS</span
+                                    class="text-xs font-bold text-gray-500 uppercase flex items-center gap-1"
                                 >
+                                    <SignalIcon class="w-3 h-3" /> Sinyal GPS
+                                </span>
                                 <span
-                                    class="text-xs font-mono bg-white px-2 py-1 rounded border"
+                                    class="text-xs font-mono bg-white px-2 py-1 rounded border shadow-sm"
                                     :class="
                                         accuracy > 20
-                                            ? 'text-red-600'
-                                            : 'text-green-600'
+                                            ? 'text-amber-600 border-amber-200'
+                                            : 'text-green-600 border-green-200'
                                     "
-                                    >±{{ accuracy }}m</span
                                 >
+                                    ±{{ accuracy }}m
+                                </span>
                             </div>
 
                             <div
-                                class="w-full bg-gray-200 rounded-full h-2.5 mb-2 overflow-hidden"
+                                class="w-full bg-gray-200 rounded-full h-2.5 mb-2 overflow-hidden relative"
                             >
                                 <div
-                                    class="h-2.5 rounded-full transition-all duration-500"
+                                    class="h-2.5 rounded-full transition-all duration-1000 ease-out relative"
                                     :class="
                                         isWithinRadius
                                             ? 'bg-green-500'
@@ -426,11 +476,15 @@ onBeforeUnmount(() => {
                                             100,
                                         100
                                     )}%`"
-                                ></div>
+                                >
+                                    <div
+                                        class="absolute inset-0 bg-white/30 w-full h-full animate-[shimmer_2s_infinite]"
+                                    ></div>
+                                </div>
                             </div>
 
                             <p
-                                class="text-xs font-bold"
+                                class="text-xs font-bold transition-colors duration-300"
                                 :class="
                                     isWithinRadius
                                         ? 'text-green-600'
@@ -439,10 +493,8 @@ onBeforeUnmount(() => {
                             >
                                 {{
                                     isWithinRadius
-                                        ? "✅ Lokasi Sesuai (Dalam Radius)"
-                                        : `⛔ Kejauhan: ${currentDistance}m (Maks ${
-                                              props.schoolSettings?.radius || 50
-                                          }m)`
+                                        ? "✅ Lokasi Valid (Dalam Radius)"
+                                        : `⛔ Terlalu Jauh (${currentDistance}m)`
                                 }}
                             </p>
                         </div>
@@ -452,46 +504,100 @@ onBeforeUnmount(() => {
                             class="bg-blue-50 rounded-xl p-4 border border-blue-100 text-center"
                         >
                             <p class="text-blue-800 text-sm font-bold">
-                                Mode Cepat
+                                🚀 Mode Cepat
                             </p>
                             <p class="text-blue-600 text-xs mt-1">
-                                Validasi lokasi dinonaktifkan untuk metode ini.
+                                GPS tidak wajib valid untuk metode ini.
                             </p>
                         </div>
 
-                        <div class="pt-4">
+                        <div class="pt-2">
                             <div v-if="mode === 'face'" class="space-y-3">
                                 <div v-if="!photoPreview">
                                     <button
                                         @click="takePhoto"
                                         type="button"
-                                        class="w-full bg-green-700 text-white font-bold py-4 rounded-xl hover:bg-green-800 shadow-lg shadow-green-700/30 flex items-center justify-center gap-2 transition-transform active:scale-95"
+                                        :disabled="
+                                            !coordinates || !isWithinRadius
+                                        "
+                                        class="w-full font-bold py-4 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all duration-300"
+                                        :class="{
+                                            'bg-green-600 text-white hover:bg-green-700 hover:shadow-green-700/40 active:scale-95 cursor-pointer':
+                                                coordinates && isWithinRadius,
+                                            'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none':
+                                                !coordinates || !isWithinRadius,
+                                        }"
                                     >
-                                        <CameraIcon class="w-6 h-6" /> Ambil
-                                        Selfie
+                                        <span
+                                            v-if="!coordinates"
+                                            class="flex items-center gap-2"
+                                        >
+                                            <svg
+                                                class="animate-spin h-5 w-5"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <circle
+                                                    class="opacity-25"
+                                                    cx="12"
+                                                    cy="12"
+                                                    r="10"
+                                                    stroke="currentColor"
+                                                    stroke-width="4"
+                                                ></circle>
+                                                <path
+                                                    class="opacity-75"
+                                                    fill="currentColor"
+                                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                                ></path>
+                                            </svg>
+                                            Mencari Lokasi...
+                                        </span>
+                                        <span
+                                            v-else-if="!isWithinRadius"
+                                            class="flex items-center gap-2"
+                                        >
+                                            <ExclamationTriangleIcon
+                                                class="w-5 h-5"
+                                            />
+                                            Lokasi Kejauhan
+                                        </span>
+                                        <span
+                                            v-else
+                                            class="flex items-center gap-2"
+                                        >
+                                            <CameraIcon class="w-6 h-6" /> Ambil
+                                            Selfie
+                                        </span>
                                     </button>
                                 </div>
-                                <div v-else class="grid grid-cols-2 gap-3">
+
+                                <div
+                                    v-else
+                                    class="grid grid-cols-2 gap-3 animate-fade-in-up"
+                                >
                                     <button
                                         @click="photoPreview = null"
                                         type="button"
-                                        class="bg-gray-100 text-gray-700 font-bold py-3 rounded-xl hover:bg-gray-200 flex items-center justify-center gap-2"
+                                        class="bg-gray-100 text-gray-700 font-bold py-3 rounded-xl hover:bg-gray-200 flex items-center justify-center gap-2 transition-colors"
                                     >
                                         <ArrowPathIcon class="w-5 h-5" /> Ulang
                                     </button>
                                     <button
                                         @click="submitAbsen"
-                                        :disabled="
-                                            form.processing || !isWithinRadius
-                                        "
-                                        class="bg-green-700 text-white font-bold py-3 rounded-xl hover:bg-green-800 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                        :disabled="form.processing"
+                                        class="bg-green-700 text-white font-bold py-3 rounded-xl hover:bg-green-800 shadow-lg flex items-center justify-center gap-2 transition-all"
                                     >
-                                        {{
-                                            form.processing
-                                                ? "Mengirim..."
-                                                : "Kirim Absen"
-                                        }}
-                                        <CheckCircleIcon class="w-5 h-5" />
+                                        <span v-if="form.processing"
+                                            >Mengirim...</span
+                                        >
+                                        <span
+                                            v-else
+                                            class="flex items-center gap-2"
+                                            ><CheckCircleIcon class="w-5 h-5" />
+                                            Kirim</span
+                                        >
                                     </button>
                                 </div>
                             </div>
@@ -528,5 +634,26 @@ onBeforeUnmount(() => {
     width: 100% !important;
     height: 100% !important;
     object-fit: cover !important;
+}
+@keyframes shimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
+    }
+}
+.animate-fade-in-up {
+    animation: fadeInUp 0.3s ease-out;
+}
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 </style>
