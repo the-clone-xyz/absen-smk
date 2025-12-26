@@ -99,7 +99,7 @@ Route::middleware(['auth', 'verified', 'role:student'])
         // --- GROUP A: Dashboard & Manajemen Kelas ---
         Route::name('teacher.')->group(function () {
             Route::get('/dashboard', [TeacherController::class, 'index'])->name('dashboard');
-
+            Route::post('/simpan-nilai', [TeacherController::class, 'storeGrades'])->name('grades.store');
            // 1. DETAIL KELAS (Data Induk/Anggota) -> ClassroomShow.vue
             Route::get('/kelas-induk/{id}', [TeacherController::class, 'show'])
                 ->whereNumber('id')
@@ -131,6 +131,7 @@ Route::middleware(['auth', 'verified', 'role:student'])
             Route::delete('/tugas/{id}', 'destroy')->whereNumber('id')->name('tasks.destroy');
             Route::post('/tugas/submission/{id}/grade', 'gradeSubmission')->whereNumber('id')->name('tasks.grade');
         });
+
     });
 
 // =========================================================================

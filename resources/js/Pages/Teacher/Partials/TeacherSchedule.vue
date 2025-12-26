@@ -25,7 +25,9 @@ const getScheduleStatus = (startTimeStr) => {
     if (!startTimeStr) return { urgent: false, text: "" };
     const [hours, minutes] = startTimeStr.split(":");
     const scheduleDate = new Date();
+    // Pastikan detik di-reset agar kalkulasi akurat
     scheduleDate.setHours(hours, minutes, 0);
+
     const diffMs = scheduleDate - now.value;
     const diffMinutes = Math.floor(diffMs / 60000);
     if (diffMinutes >= 0 && diffMinutes < 30)

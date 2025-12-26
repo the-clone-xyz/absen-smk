@@ -325,15 +325,7 @@ const scrollRight = () => {
                             class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden flex flex-col h-[400px]"
                         >
                             <div
-                                class="px-5 py-4 border-b border-slate-50 flex items-center gap-2 bg-white sticky top-0 z-10"
-                            >
-                                <ClockIcon class="w-5 h-5 text-indigo-500" />
-                                <h3 class="font-bold text-slate-800">
-                                    Jadwal Hari Ini
-                                </h3>
-                            </div>
-                            <div
-                                class="p-4 flex-grow overflow-y-auto custom-scrollbar"
+                                class="p-4  flex-grow overflow-y-auto custom-scrollbar"
                             >
                                 <TeacherSchedule :jadwal="jadwal" />
                             </div>
