@@ -1,352 +1,277 @@
 <script setup>
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
-import { Head, useForm } from "@inertiajs/vue3";
-import { ref } from "vue";
+import { Head, Link } from "@inertiajs/vue3";
 import {
-    ClipboardDocumentListIcon,
-    CheckCircleIcon,
+    ArrowLeftIcon,
+    BookOpenIcon,
     ClockIcon,
-    PaperClipIcon,
-    ArrowUpTrayIcon,
+    ClipboardDocumentListIcon,
     DocumentTextIcon,
-    XMarkIcon,
+    CheckCircleIcon,
+    XCircleIcon,
+    ChevronRightIcon,
+    UserIcon,
+    CloudArrowDownIcon,
 } from "@heroicons/vue/24/solid";
 
 const props = defineProps({
-    tasks: Array, // Data tugas dari TaskController
+    schedule: Object,
+    journal: Object,
+    tasks: Array,
+    student: Object,
 });
 
-const showModal = ref(false);
-const selectedTask = ref(null);
-
-const form = useForm({
-    notes: "",
-    file: null,
-});
-
-// Buka Modal untuk Submit
-const openSubmitModal = (task) => {
-    selectedTask.value = task;
-    form.reset();
-    showModal.value = true;
-};
-
-// Kirim Jawaban
-const submitAssignment = () => {
-    if (!selectedTask.value) return;
-
-    form.post(route("tasks.submit", selectedTask.value.id), {
-        forceFormData: true, // Wajib untuk upload file
-        onSuccess: () => {
-            showModal.value = false;
-            selectedTask.value = null;
-            form.reset();
-        },
-    });
-};
-
-// Helper untuk format tanggal
-const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString("id-ID", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-    });
+const formatTime = (time) => {
+    if (!time) return "00:00";
+    return time.substring(0, 5);
 };
 </script>
 
 <template>
-    <Head title="Tugas & PR" />
+    <Head :title="schedule?.subject?.name || 'Detail Pelajaran'" />
 
     <AuthenticatedLayout>
         <template #header>
-            <div class="flex justify-between items-center">
-                <h2 class="font-extrabold text-2xl text-gray-800 leading-tight">
-                    Tugas & PR
-                </h2>
-                <div
-                    class="bg-white px-3 py-1 rounded-full border text-xs font-bold text-gray-600 shadow-sm"
+            <div class="flex items-center gap-4">
+                <Link
+                    :href="route('student.dashboard')"
+                    class="p-2 rounded-full hover:bg-gray-200 transition text-gray-500 bg-white shadow-sm border border-gray-100"
                 >
-                    {{ tasks.length }} Tugas Aktif
+                    <ArrowLeftIcon class="w-5 h-5" />
+                </Link>
+                <div class="min-w-0">
+                    <h2
+                        class="font-bold text-xl text-gray-800 leading-tight truncate"
+                    >
+                        {{ schedule?.subject?.name }}
+                    </h2>
+                    <div
+                        class="flex flex-wrap items-center gap-2 mt-1 text-sm text-gray-500"
+                    >
+                        <div class="flex items-center gap-1 min-w-0">
+                            <UserIcon class="w-3 h-3 shrink-0" />
+                            <span class="truncate">{{
+                                schedule?.teacher?.user?.name
+                            }}</span>
+                        </div>
+                        <span class="text-gray-300 hidden sm:inline">•</span>
+                        <div
+                            class="flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs font-bold border border-blue-100 shrink-0"
+                        >
+                            <ClockIcon class="w-3 h-3" />
+                            {{ formatTime(schedule?.start_time) }} -
+                            {{ formatTime(schedule?.end_time) }}
+                        </div>
+                    </div>
                 </div>
             </div>
         </template>
 
-        <div class="py-8 px-4 sm:px-6 lg:px-8">
-            <div class="max-w-5xl mx-auto">
-                <div
-                    v-if="tasks.length === 0"
-                    class="flex flex-col items-center justify-center py-20 bg-white rounded-3xl shadow-sm border border-gray-200 text-center"
-                >
-                    <div class="bg-green-50 p-4 rounded-full mb-4">
-                        <CheckCircleIcon class="w-16 h-16 text-green-500" />
-                    </div>
-                    <h3 class="text-xl font-bold text-gray-800">
-                        Hore! Tidak ada tugas.
-                    </h3>
-                    <p class="text-gray-500 text-sm mt-1">
-                        Kamu sudah menyelesaikan semua pekerjaan rumah.
-                    </p>
-                </div>
-
-                <div v-else class="grid gap-6">
+        <div class="py-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+                <div class="lg:col-span-2 space-y-6">
                     <div
-                        v-for="task in tasks"
-                        :key="task.id"
-                        class="bg-white rounded-2xl shadow-sm border overflow-hidden transition hover:shadow-md relative"
-                        :class="
-                            task.is_submitted
-                                ? 'border-green-200'
-                                : 'border-red-200'
-                        "
+                        class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden"
                     >
                         <div
-                            class="absolute top-0 right-0 px-4 py-1.5 rounded-bl-xl text-[10px] font-bold uppercase tracking-wider"
-                            :class="
-                                task.is_submitted
-                                    ? 'bg-green-100 text-green-700'
-                                    : 'bg-red-100 text-red-700'
-                            "
+                            class="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-blue-50 to-white flex items-center gap-3"
                         >
-                            {{
-                                task.is_submitted
-                                    ? "Selesai Dikumpul"
-                                    : "Belum Dikerjakan"
-                            }}
+                            <div
+                                class="p-2 bg-blue-100 rounded-lg text-blue-600"
+                            >
+                                <BookOpenIcon class="w-5 h-5" />
+                            </div>
+                            <h3 class="font-bold text-slate-800 text-lg">
+                                Materi Hari Ini
+                            </h3>
                         </div>
 
-                        <div class="p-6 flex flex-col md:flex-row gap-6">
-                            <div class="flex-1">
-                                <div class="flex items-center gap-2 mb-2">
-                                    <span
-                                        class="px-2.5 py-0.5 rounded-md bg-gray-100 text-gray-600 text-xs font-bold uppercase"
+                        <div class="p-5 sm:p-6">
+                            <div v-if="journal" class="space-y-6">
+                                <div>
+                                    <h4
+                                        class="text-xl font-bold text-slate-800 mb-2"
                                     >
-                                        {{ task.subject.name }}
-                                    </span>
-                                    <span
-                                        class="text-xs text-gray-400 flex items-center gap-1"
-                                    >
-                                        <ClockIcon class="w-3 h-3" /> Deadline:
-                                        {{ formatDate(task.deadline) }}
-                                    </span>
-                                </div>
-
-                                <h3
-                                    class="text-lg font-bold text-gray-800 mb-1"
-                                >
-                                    {{ task.title }}
-                                </h3>
-                                <p class="text-xs text-gray-500 mb-4">
-                                    Guru: {{ task.teacher.name }}
-                                </p>
-
-                                <div
-                                    class="bg-gray-50 p-4 rounded-xl text-sm text-gray-700 border border-gray-100 whitespace-pre-wrap"
-                                >
-                                    {{ task.description }}
-                                </div>
-
-                                <div v-if="task.attachment" class="mt-4">
-                                    <a
-                                        :href="`/storage/${task.attachment}`"
-                                        target="_blank"
-                                        class="inline-flex items-center gap-2 text-sm text-blue-600 font-bold hover:underline bg-blue-50 px-3 py-2 rounded-lg border border-blue-100 transition"
-                                    >
-                                        <PaperClipIcon class="w-4 h-4" />
-                                        Download Lampiran Soal
-                                    </a>
-                                </div>
-                            </div>
-
-                            <div
-                                class="md:w-1/3 flex flex-col justify-center border-t md:border-t-0 md:border-l border-gray-100 md:pl-6 pt-4 md:pt-0"
-                            >
-                                <div
-                                    v-if="task.is_submitted"
-                                    class="text-center"
-                                >
-                                    <div v-if="task.my_score !== null">
-                                        <p
-                                            class="text-xs text-gray-500 uppercase font-bold mb-1"
-                                        >
-                                            Nilai Kamu
-                                        </p>
-                                        <div
-                                            class="text-5xl font-extrabold text-green-600"
-                                        >
-                                            {{ task.my_score }}
-                                        </div>
-                                        <p
-                                            class="text-[10px] text-gray-400 mt-2"
-                                        >
-                                            Dinilai oleh Guru
-                                        </p>
-                                    </div>
+                                        {{ journal.topic }}
+                                    </h4>
                                     <div
-                                        v-else
-                                        class="bg-yellow-50 p-4 rounded-xl border border-yellow-100"
+                                        class="prose prose-sm text-slate-600 leading-relaxed whitespace-pre-line bg-slate-50 p-4 rounded-xl border border-slate-100 max-w-none"
                                     >
-                                        <div class="flex justify-center mb-2">
-                                            <div
-                                                class="animate-pulse bg-yellow-400 w-3 h-3 rounded-full mx-1"
-                                            ></div>
-                                            <div
-                                                class="animate-pulse bg-yellow-400 w-3 h-3 rounded-full mx-1 delay-75"
-                                            ></div>
-                                            <div
-                                                class="animate-pulse bg-yellow-400 w-3 h-3 rounded-full mx-1 delay-150"
-                                            ></div>
-                                        </div>
-                                        <p
-                                            class="text-sm font-bold text-yellow-700"
-                                        >
-                                            Menunggu Penilaian
-                                        </p>
-                                        <p class="text-xs text-yellow-600 mt-1">
-                                            Tugas sudah dikirim.
-                                        </p>
+                                        {{
+                                            journal.notes ||
+                                            "Tidak ada catatan tambahan."
+                                        }}
                                     </div>
                                 </div>
 
-                                <div v-else>
-                                    <button
-                                        @click="openSubmitModal(task)"
-                                        class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-200 transition transform active:scale-95 flex items-center justify-center gap-2"
+                                <div v-if="journal.module_path">
+                                    <h5
+                                        class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3"
                                     >
-                                        <ArrowUpTrayIcon class="w-5 h-5" />
-                                        Kumpulkan Tugas
-                                    </button>
-                                    <p
-                                        class="text-xs text-center text-red-500 mt-3 font-medium"
+                                        Lampiran Dokumen
+                                    </h5>
+
+                                    <div
+                                        class="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white border border-slate-200 rounded-xl hover:border-blue-300 hover:shadow-md transition group gap-4"
                                     >
-                                        Segera kerjakan sebelum deadline!
-                                    </p>
+                                        <div
+                                            class="flex items-center gap-3 min-w-0"
+                                        >
+                                            <div
+                                                class="p-3 bg-red-50 text-red-500 rounded-lg shrink-0"
+                                            >
+                                                <DocumentTextIcon
+                                                    class="w-8 h-8"
+                                                />
+                                            </div>
+                                            <div class="min-w-0">
+                                                <p
+                                                    class="font-bold text-slate-700 group-hover:text-blue-600 transition truncate text-sm sm:text-base"
+                                                >
+                                                    Modul Pembelajaran
+                                                </p>
+                                                <p
+                                                    class="text-xs text-slate-400 truncate"
+                                                >
+                                                    Klik tombol untuk mengunduh
+                                                    file
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <a
+                                            :href="
+                                                route('viewer.download', {
+                                                    path: journal.module_path,
+                                                })
+                                            "
+                                            class="w-full sm:w-auto flex items-center justify-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-blue-700 transition shadow-sm active:scale-95 shrink-0"
+                                        >
+                                            <CloudArrowDownIcon
+                                                class="w-4 h-4"
+                                            />
+                                            Download
+                                        </a>
+                                    </div>
+                                </div>
+                                <div
+                                    v-else
+                                    class="text-sm text-slate-400 italic bg-slate-50 p-3 rounded-lg border border-dashed border-slate-200 text-center"
+                                >
+                                    Tidak ada file lampiran untuk materi ini.
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div
-            v-if="showModal"
-            class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 transition-opacity"
-            @click="showModal = false"
-        >
-            <div
-                class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all scale-100"
-                @click.stop
-            >
-                <div
-                    class="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center"
-                >
-                    <h3 class="font-bold text-gray-800">Kirim Jawaban</h3>
-                    <button
-                        @click="showModal = false"
-                        class="text-gray-400 hover:text-gray-600"
-                    >
-                        <XMarkIcon class="w-5 h-5" />
-                    </button>
-                </div>
-
-                <div class="p-6 space-y-4">
-                    <div>
-                        <p
-                            class="text-xs font-bold text-gray-500 uppercase mb-1"
-                        >
-                            Judul Tugas
-                        </p>
-                        <p class="text-sm font-medium text-gray-800">
-                            {{ selectedTask?.title }}
-                        </p>
-                    </div>
-
-                    <div>
-                        <label
-                            class="block text-sm font-bold text-gray-700 mb-2"
-                            >Upload File (Foto/PDF)</label
-                        >
-                        <div
-                            class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:bg-blue-50 hover:border-blue-300 transition cursor-pointer relative group"
-                        >
-                            <input
-                                @input="form.file = $event.target.files[0]"
-                                type="file"
-                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                            />
 
                             <div
-                                v-if="form.file"
-                                class="flex flex-col items-center"
+                                v-else
+                                class="flex flex-col items-center justify-center py-12 text-center"
                             >
-                                <DocumentTextIcon
-                                    class="w-10 h-10 text-blue-600 mb-2"
-                                />
-                                <p
-                                    class="text-sm font-bold text-blue-600 truncate max-w-[200px]"
+                                <div
+                                    class="bg-slate-50 w-20 h-20 rounded-full flex items-center justify-center mb-4"
                                 >
-                                    {{ form.file.name }}
-                                </p>
-                                <p class="text-xs text-green-600">
-                                    Siap diupload
-                                </p>
-                            </div>
-                            <div v-else class="flex flex-col items-center">
-                                <ArrowUpTrayIcon
-                                    class="w-10 h-10 text-gray-400 group-hover:text-blue-500 mb-2 transition"
-                                />
-                                <p class="text-sm text-gray-600 font-medium">
-                                    Klik untuk pilih file
-                                </p>
-                                <p class="text-xs text-gray-400 mt-1">
-                                    Maksimal 5MB
+                                    <BookOpenIcon
+                                        class="w-10 h-10 text-slate-300"
+                                    />
+                                </div>
+                                <h4 class="text-slate-600 font-bold">
+                                    Belum Ada Materi
+                                </h4>
+                                <p
+                                    class="text-slate-400 text-sm max-w-xs mx-auto mt-1"
+                                >
+                                    Guru belum menginput jurnal atau materi
+                                    untuk pertemuan hari ini.
                                 </p>
                             </div>
                         </div>
-                        <p
-                            v-if="form.errors.file"
-                            class="text-red-500 text-xs mt-2"
-                        >
-                            {{ form.errors.file }}
-                        </p>
-                    </div>
-
-                    <div>
-                        <label
-                            class="block text-sm font-bold text-gray-700 mb-2"
-                            >Catatan (Opsional)</label
-                        >
-                        <textarea
-                            v-model="form.notes"
-                            rows="3"
-                            class="w-full rounded-xl border-gray-300 text-sm focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="Tambahkan pesan untuk guru..."
-                        ></textarea>
                     </div>
                 </div>
 
-                <div class="px-6 py-4 bg-gray-50 flex justify-end gap-3">
-                    <button
-                        @click="showModal = false"
-                        class="px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-200 rounded-lg transition"
+                <div class="space-y-6">
+                    <div
+                        class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden h-full flex flex-col"
                     >
-                        Batal
-                    </button>
-                    <button
-                        @click="submitAssignment"
-                        :disabled="form.processing"
-                        class="px-6 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 shadow-md disabled:opacity-50 flex items-center gap-2 transition"
-                    >
-                        <span
-                            v-if="form.processing"
-                            class="animate-spin border-2 border-white border-t-transparent rounded-full w-4 h-4"
-                        ></span>
-                        {{ form.processing ? "Mengirim..." : "Kirim Sekarang" }}
-                    </button>
+                        <div
+                            class="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-purple-50 to-white flex items-center gap-3"
+                        >
+                            <div
+                                class="p-2 bg-purple-100 rounded-lg text-purple-600"
+                            >
+                                <ClipboardDocumentListIcon class="w-5 h-5" />
+                            </div>
+                            <h3 class="font-bold text-slate-800 text-lg">
+                                Tugas Kelas
+                            </h3>
+                        </div>
+
+                        <div class="p-4 space-y-3 flex-grow bg-slate-50/50">
+                            <div
+                                v-if="!tasks || tasks.length === 0"
+                                class="flex flex-col items-center justify-center py-10 text-center h-full"
+                            >
+                                <ClipboardDocumentListIcon
+                                    class="w-12 h-12 text-slate-200 mb-2"
+                                />
+                                <p class="text-slate-400 text-sm italic">
+                                    Tidak ada tugas aktif saat ini.
+                                </p>
+                            </div>
+
+                            <Link
+                                v-for="task in tasks"
+                                :key="task.id"
+                                :href="route('student.tasks.show', task.id)"
+                                class="block bg-white border border-slate-200 rounded-xl p-4 hover:border-purple-400 hover:shadow-md transition-all group relative overflow-hidden"
+                            >
+                                <div
+                                    class="absolute top-0 right-0 w-16 h-16 bg-purple-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-150"
+                                ></div>
+
+                                <div
+                                    class="relative z-10 flex justify-between items-start"
+                                >
+                                    <div class="flex-grow pr-4 min-w-0">
+                                        <h4
+                                            class="font-bold text-slate-800 text-sm mb-1 group-hover:text-purple-700 transition-colors line-clamp-1"
+                                        >
+                                            {{ task.title }}
+                                        </h4>
+                                        <p
+                                            class="text-xs text-slate-500 line-clamp-2 mb-3 leading-relaxed"
+                                        >
+                                            {{
+                                                task.description ||
+                                                "Tidak ada deskripsi singkat."
+                                            }}
+                                        </p>
+
+                                        <div
+                                            v-if="task.my_submission"
+                                            class="inline-flex items-center gap-1.5 bg-green-50 text-green-700 px-2.5 py-1 rounded-md text-[10px] font-bold border border-green-100"
+                                        >
+                                            <CheckCircleIcon
+                                                class="w-3.5 h-3.5"
+                                            />
+                                            Selesai
+                                        </div>
+                                        <div
+                                            v-else
+                                            class="inline-flex items-center gap-1.5 bg-red-50 text-red-600 px-2.5 py-1 rounded-md text-[10px] font-bold border border-red-100"
+                                        >
+                                            <XCircleIcon class="w-3.5 h-3.5" />
+                                            Belum
+                                        </div>
+                                    </div>
+
+                                    <div class="self-center shrink-0">
+                                        <ChevronRightIcon
+                                            class="w-5 h-5 text-slate-300 group-hover:text-purple-500 transition-colors"
+                                        />
+                                    </div>
+                                </div>
+                            </Link>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

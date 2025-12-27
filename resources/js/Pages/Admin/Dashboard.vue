@@ -16,6 +16,7 @@ import {
     ChartPieIcon,
     ClockIcon,
     PresentationChartLineIcon,
+    IdentificationIcon,
     ChevronRightIcon as ArrowRightIcon,
 } from "@heroicons/vue/24/solid";
 import { Bar, Doughnut, Line } from "vue-chartjs";
@@ -132,6 +133,14 @@ const adminMenu = computed(() => [
         icon: QrCodeIcon,
         route: route("admin.settings.qr"),
         color: "text-teal-600", // Ubah warna agar beda dengan Perpustakaan
+        bg: "bg-teal-50",
+    },
+    {
+        name: "Kartu Pelajar",
+        desc: "Desain Kartu Pelajar",
+        icon: IdentificationIcon,
+        route: route("admin.card.designer"),
+        color: "text-blue-600", // Ubah warna agar beda dengan Perpustakaan
         bg: "bg-teal-50",
     },
     {

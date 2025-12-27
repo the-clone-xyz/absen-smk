@@ -12,11 +12,9 @@ import {
     QrCodeIcon,
     CameraIcon,
     BookOpenIcon,
-    CalendarDaysIcon,
     ClipboardDocumentListIcon,
     AcademicCapIcon,
     ArrowRightIcon,
-    ClockIcon,
     ChevronLeftIcon,
     ChevronRightIcon,
 } from "@heroicons/vue/24/solid";
@@ -27,23 +25,34 @@ import TeacherCalendar from "./Partials/TeacherCalendar.vue";
 
 const props = defineProps({
     auth: Object,
-    absensiGrouped: Object,
+    absensiGrouped: Object, // Tetap ada untuk backward compatibility
     statistik: Object,
     jadwal: Array,
     jadwalKalender: Object,
-    attendanceStatus: String,
+    attendanceStatus: String, // Status Absensi Guru
+    pendingPermitsCount: Number, // Jumlah izin pending
+    latestPermits: Array, // Data izin terbaru untuk modal
     kelas: {
         type: Array,
-        default: () => [], // Default array kosong agar aman jika data belum masuk
+        default: () => [],
     },
 });
 
 const showApprovalModal = ref(false);
 const classContainer = ref(null);
 
+// Gunakan prop count dari backend jika ada, fallback ke hitung manual
 const pendingCount = computed(() => {
-    if (!props.absensiGrouped) return 0;
-    return Object.values(props.absensiGrouped).flat().length;
+    return props.pendingPermitsCount !== undefined
+        ? props.pendingPermitsCount
+        : props.absensiGrouped
+        ? Object.values(props.absensiGrouped).flat().length
+        : 0;
+});
+
+// Gunakan data permits dari backend jika ada, fallback ke absensiGrouped
+const approvalData = computed(() => {
+    return props.latestPermits || props.absensiGrouped;
 });
 
 const scrollLeft = () => {
@@ -58,18 +67,18 @@ const scrollRight = () => {
     }
 };
 
-// Helper sederhana untuk warna status
+// Helper warna status guru
 const getStatusColor = (status) => {
     if (status === "Hadir") return "bg-emerald-500";
     if (status === "Izin" || status === "Sakit") return "bg-amber-500";
     if (status === "Alpha") return "bg-rose-500";
-    return "bg-slate-400"; // Default / Belum Absen
+    return "bg-slate-400"; // Belum Absen
 };
 
 const getPingColor = (status) => {
     if (status === "Hadir") return "bg-emerald-400";
     if (status === "Izin" || status === "Sakit") return "bg-amber-400";
-    return "hidden"; // Tidak perlu ping jika belum absen/alpha
+    return "hidden";
 };
 </script>
 
@@ -222,7 +231,6 @@ const getPingColor = (status) => {
                                 ></span>
                                 Kelas Saya
                             </h3>
-
                             <div class="flex gap-2" v-if="kelas.length > 2">
                                 <button
                                     @click="scrollLeft"
@@ -323,7 +331,6 @@ const getPingColor = (status) => {
                                     </div>
                                 </div>
                             </template>
-
                             <div
                                 v-else
                                 class="w-full bg-white p-8 rounded-3xl border border-dashed border-slate-200 text-center"
@@ -345,7 +352,6 @@ const getPingColor = (status) => {
                                 <TeacherSchedule :jadwal="jadwal" />
                             </div>
                         </div>
-
                         <div
                             class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden flex flex-col h-[400px]"
                         >
@@ -467,7 +473,6 @@ const getPingColor = (status) => {
                                         class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
                                         :class="getPingColor(attendanceStatus)"
                                     ></span>
-
                                     <span
                                         class="relative inline-flex rounded-full h-2.5 w-2.5"
                                         :class="
@@ -475,7 +480,6 @@ const getPingColor = (status) => {
                                         "
                                     ></span>
                                 </span>
-
                                 <span
                                     class="text-sm font-bold"
                                     :class="
@@ -531,7 +535,7 @@ const getPingColor = (status) => {
                     <div
                         class="bg-slate-50/50 max-h-[450px] overflow-y-auto p-2"
                     >
-                        <ApprovalList :absensiGrouped="absensiGrouped" />
+                        <ApprovalList :absensiGrouped="approvalData" />
                     </div>
                 </div>
             </div>
@@ -547,7 +551,6 @@ const getPingColor = (status) => {
     -ms-overflow-style: none;
     scrollbar-width: none;
 }
-
 .custom-scrollbar::-webkit-scrollbar {
     width: 4px;
 }

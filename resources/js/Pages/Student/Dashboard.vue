@@ -13,6 +13,7 @@ import {
     ChevronLeftIcon,
     ChevronRightIcon,
     QrCodeIcon,
+    IdentificationIcon,
 } from "@heroicons/vue/24/solid";
 
 const props = defineProps({
@@ -229,8 +230,22 @@ const isToday = (day) => {
                                     </div>
                                     <span
                                         class="text-sm font-bold text-gray-700"
-                                        >Ajukan Izin</span
+                                        >Ajukan
+                                    </span>
+                                </Link>
+                                <Link
+                                    :href="route('student.card')"
+                                    class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 hover:border-green-500 hover:shadow-lg hover:-translate-y-1 transition flex flex-col items-center gap-3 text-center group"
+                                >
+                                    <div
+                                        class="w-14 h-14 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 group-hover:bg-blue-500 group-hover:text-white transition shadow-sm"
                                     >
+                                        <IdentificationIcon class="w-7 h-7" />
+                                    </div>
+                                    <span
+                                        class="text-sm font-bold text-gray-700"
+                                        >Kartu Pelajar
+                                    </span>
                                 </Link>
                                 <Link
                                     :href="route('student.card')"
