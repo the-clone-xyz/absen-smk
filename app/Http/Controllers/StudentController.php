@@ -9,84 +9,91 @@ use App\Models\Attendance;
 use App\Models\Schedule;
 use App\Models\Task;
 use App\Models\TaskSubmission;
+use App\Models\Journal; 
+use Carbon\Carbon;
+use App\Models\SystemSetting;
+use App\Models\Student; // PENTING: Tambahkan Model Student
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
+
 
 class StudentController extends Controller
 {
     public function index()
     {
         $user = Auth::user();
-        
-        // Cek data siswa
         if (!$user->student) {
             return redirect('/')->with('error', 'Data siswa tidak ditemukan.');
         }
 
         $userId = $user->id;
-        
-        // PERBAIKAN 1: Ambil ID Kelas dengan benar (class_id)
-        // Kita gunakan operator ?? untuk jaga-jaga jika namanya beda
         $classId = $user->student->class_id ?? $user->student->kelas_id; 
 
-        // 1. Statistik Absensi (Gunakan 'user_id' sesuai tabel attendances Anda)
         $stats = [
             'hadir' => Attendance::where('user_id', $userId)->where('status', 'Hadir')->count(),
             'sakit' => Attendance::where('user_id', $userId)->whereIn('status', ['Sakit', 'Izin'])->count(),
             'total' => Attendance::where('user_id', $userId)->count(),
         ];
 
-        // 2. Jadwal Hari Ini
-        // Menggunakan nama hari bahasa Indonesia (Senin, Selasa, dst)
-        $today = now()->locale('id')->isoFormat('dddd'); 
+        Carbon::setLocale('id');
+        $today = Carbon::now()->isoFormat('dddd'); 
         
         $jadwal = [];
         if ($classId) {
             $jadwal = Schedule::with(['subject', 'teacher.user'])
                         ->where('class_id', $classId)
-                        // PERBAIKAN 2: Gunakan kolom 'day' sesuai screenshot database
                         ->where('day', $today) 
                         ->orderBy('start_time')
                         ->get();
         }
 
-        // 3. Riwayat Absen
         $riwayat = Attendance::where('user_id', $userId)
                     ->get()
                     ->mapWithKeys(function ($item) {
                         return [$item->date => ['status' => $item->status]];
                     });
 
-        // PERBAIKAN 3: Pastikan me-render ke Dashboard Siswa, BUKAN Admin
+        $todayAttendance = Attendance::where('user_id', $userId)
+                            ->where('date', now()->toDateString())
+                            ->first();
+        $statusHariIni = $todayAttendance ? $todayAttendance->status : 'Belum Absen';
+
         return Inertia::render('Student/Dashboard', [
-            'auth' => [
-                'user' => $user
-            ],
+            'auth' => ['user' => $user],
             'statistik' => $stats,
             'jadwal' => $jadwal,
-            'riwayatAbsen' => $riwayat
+            'riwayatAbsen' => $riwayat,
+            'attendanceStatus' => $statusHariIni
         ]);
     }
-
-    // --- FITUR KELAS & TUGAS (Biarkan Tetap Ada) ---
 
     public function showClass($scheduleId)
     {
         $schedule = Schedule::with(['subject', 'teacher.user', 'kelas'])->findOrFail($scheduleId);
-        
-        // Ambil Tugas yang ada di kelas/mapel ini
-        // Pastikan menggunakan 'class_id'
-        $classId = $schedule->class_id ?? $schedule->kelas_id;
+        $classId = $schedule->kelas->id;
 
         $tasks = Task::with(['submissions' => function($q) {
             $q->where('student_id', Auth::user()->student->id);
         }])
-        ->where('kelas_id', $classId) 
+        ->where('kelas_id', $classId)
         ->where('subject_id', $schedule->subject_id)
         ->latest()
-        ->get();
+        ->get()
+        ->map(function($task) {
+            $task->my_submission = $task->submissions->first();
+            return $task;
+        });
+
+        $journal = Journal::where('schedule_id', $scheduleId)
+                    ->where('date', now()->toDateString())
+                    ->latest()
+                    ->first();
 
         return Inertia::render('Student/Classroom', [
             'schedule' => $schedule,
-            'tasks' => $tasks
+            'tasks' => $tasks,
+            'journal' => $journal,
+            'student' => Auth::user()->student
         ]);
     }
 
@@ -103,8 +110,14 @@ class StudentController extends Controller
         ]);
     }
 
-public function submitTask(Request $request, $id)
+    public function submitTask(Request $request, $id)
     {
+        $task = Task::findOrFail($id);
+        
+        if ($task->deadline && now() > $task->deadline) {
+            return back()->withErrors(['error' => 'Maaf, batas waktu pengumpulan tugas ini sudah berakhir.']);
+        }
+
         $request->validate([
             'file' => 'required|file|max:10240',
             'notes' => 'nullable|string'
@@ -120,10 +133,49 @@ public function submitTask(Request $request, $id)
             [
                 'file_path' => $path,
                 'notes' => $request->notes,
-                // 'submitted_at' => now(), <--- HAPUS BARIS INI
             ]
         );
 
         return back()->with('success', 'Tugas berhasil dikirim!');
     }
+
+
+// --- FITUR CETAK KARTU (VERSI FINAL & AMAN) ---
+public function card()
+{
+    $user = Auth::user();
+
+    // AMBIL DATA MANUAL (Anti-Gagal)
+    $student = DB::table('students')
+        ->leftJoin('kelas', 'students.class_id', '=', 'kelas.id')
+        ->where('students.user_id', $user->id)
+        ->select('students.*', 'kelas.name as nama_kelas')
+        ->first();
+
+        $setting = DB::table('system_settings')->first();
+
+    // FORMAT DATA UNTUK VUE
+    $data = [
+        'nama'      => $user->name,
+        'nisn'      => $student->nisn ?? '-',
+        'nis'       => $student->nis ?? '-',
+        'kelas'     => $student->nama_kelas ?? 'UMUM',
+        'ttl'       => ($student && $student->pob && $student->dob) ? $student->pob . ', ' . $student->dob : '-',
+        'alamat'    => $student->address ?? '-',
+        'foto'      => $user->avatar ? '/storage/' . $user->avatar : null,
+        
+        // Data Sekolah Hardcode Dulu Biar Muncul
+        'sekolah' => $setting->school_name ?? 'SMK TAMANSISWA',
+        'kepsek'    => 'Drs. Budi Santoso, M.Pd',
+        'nip_kepsek'=> 'NIP. 19750101 200012 1 001',
+        'alamat_sekolah' => 'Jl. Pendidikan No. 123',
+        'website'   => 'www.smk.sch.id',
+        'phone'     => '021-123456'
+    ];
+
+    return Inertia::render('Student/Card', [
+    'card_data' => $data
+    ]);
+
+}
 }

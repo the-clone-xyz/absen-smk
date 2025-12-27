@@ -1,334 +1,401 @@
 <script setup>
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
-import { Head, usePage, Link } from "@inertiajs/vue3";
-import {
-    PrinterIcon,
-    ArrowLeftIcon,
-    AcademicCapIcon,
-} from "@heroicons/vue/24/solid";
-import { computed } from "vue";
+import { Head } from "@inertiajs/vue3";
+import { ref, computed } from "vue";
+import { toPng } from "html-to-image";
+import { ArrowDownTrayIcon, PrinterIcon } from "@heroicons/vue/24/outline";
 
-const page = usePage();
-// Data Dummy untuk NISN/NIS & TTL karena belum ada di database
-const user = computed(() => {
-    return (
-        {
-            ...page.props.auth.user,
-            nisn: "0081234567",
-            nis: "232410150",
-            ttl: "Jakarta, 12 Mei 2008",
-            jurusan: "Rekayasa Perangkat Lunak",
-        } || {
-            name: "Memuat...",
-            nisn: "0000000000",
-            nis: "000000000",
-            id: 0,
-            role: "student",
-        }
-    );
+const props = defineProps({
+    cardData: Object,
+    template: Object,
 });
 
-const qrUrl = computed(() => {
-    const content = `SISWA-${user.value.nisn}-${user.value.nis}`;
-    return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${content}`;
-});
+const frontRef = ref(null);
+const backRef = ref(null);
+const isGeneratingFront = ref(false);
+const isGeneratingBack = ref(false);
 
-const printCard = () => {
-    window.print();
+// --- LOGIC RENDER ---
+const renderElements = (side) => {
+    const elements = props.template?.elements
+        ? JSON.parse(props.template.elements)
+        : [];
+    return elements
+        .filter((el) => (el.side || "front") === side)
+        .map((el) => {
+            let content = el.content;
+            let src = el.src;
+
+            if (el.type === "dynamic_text" && el.data_key) {
+                const keys = {
+                    nama: props.cardData.nama,
+                    nisn: props.cardData.nisn,
+                    kelas: props.cardData.kelas,
+                    ttl: props.cardData.ttl,
+                    alamat: props.cardData.alamat,
+                    kepsek: props.cardData.kepsek,
+                    nip_kepsek: props.cardData.nip_kepsek,
+                    tanggal_cetak: props.cardData.tanggal_cetak,
+                };
+                if (content.includes("{")) {
+                    content = content.replace(/{(.*?)}/g, (match, key) => {
+                        const cleanKey = key
+                            .replace(" SISWA", "")
+                            .toLowerCase();
+                        const map = {
+                            nama: "nama",
+                            nisn: "nisn",
+                            kelas: "kelas",
+                            ttl: "ttl",
+                            nip: "nip_kepsek",
+                            kepsek: "kepsek",
+                            "tgl cetak": "tanggal_cetak",
+                        };
+                        return keys[map[cleanKey] || el.data_key] || match;
+                    });
+                } else {
+                    content = keys[el.data_key] || content;
+                }
+            }
+
+            if (el.type === "photo")
+                src =
+                    props.cardData.foto ||
+                    `https://ui-avatars.com/api/?name=${props.cardData.nama}&background=random`;
+            if (
+                el.type === "qr" ||
+                (el.type === "image" && el.data_key === "qr_code")
+            ) {
+                src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(
+                    JSON.stringify({ nis: props.cardData.nis })
+                )}`;
+            }
+            return { ...el, content, src };
+        });
+};
+
+const renderedFront = computed(() => renderElements("front"));
+const renderedBack = computed(() => renderElements("back"));
+
+// --- FIX DOWNLOAD FUNCTION ---
+// Kita ubah parameter ke-3 menjadi tipe string ('front'/'back') untuk menentukan state mana yang diubah
+const downloadSingleSide = async (refEl, fileNameSuffix, sideType) => {
+    if (!refEl) return;
+
+    // Set loading state
+    if (sideType === "front") isGeneratingFront.value = true;
+    else isGeneratingBack.value = true;
+
+    try {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        // Skip fonts agar tidak error CORS/SecurityError
+        const dataUrl = await toPng(refEl, {
+            quality: 1.0,
+            pixelRatio: 3,
+            cacheBust: true,
+            skipFonts: true,
+        });
+
+        const link = document.createElement("a");
+        link.download = `Kartu_${fileNameSuffix}_${props.cardData.nama}.png`;
+        link.href = dataUrl;
+        link.click();
+    } catch (error) {
+        alert("Gagal mengunduh. Coba lagi.");
+        console.error(error);
+    } finally {
+        // Reset loading state
+        if (sideType === "front") isGeneratingFront.value = false;
+        else isGeneratingBack.value = false;
+    }
 };
 </script>
 
 <template>
-    <Head title="Kartu Pelajar Digital" />
-
+    <Head title="Kartu Pelajar" />
     <AuthenticatedLayout>
-        <template #header>
-            <div class="flex items-center gap-4 print:hidden">
-                <Link
-                    :href="route('dashboard')"
-                    class="p-2 rounded-full hover:bg-gray-200 transition text-gray-500"
-                >
-                    <ArrowLeftIcon class="w-5 h-5" />
-                </Link>
-                <h2 class="font-bold text-xl text-green-800 leading-tight">
-                    Kartu Tanda Pelajar
-                </h2>
-            </div>
-        </template>
-
         <div
-            class="py-12 flex flex-col items-center justify-center min-h-[80vh]"
+            class="min-h-screen bg-slate-50 flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8"
         >
-            <div
-                id="kartu-pelajar"
-                class="relative w-[420px] h-[260px] rounded-2xl overflow-hidden shadow-2xl border-[2px] border-yellow-400/80 select-none print:shadow-none"
-            >
-                <svg
-                    class="absolute inset-0 w-full h-full pointer-events-none"
-                    viewBox="0 0 420 260"
-                    preserveAspectRatio="none"
+            <div class="text-center max-w-2xl mb-12">
+                <h2
+                    class="text-3xl font-extrabold text-slate-900 tracking-tight sm:text-4xl"
                 >
-                    <defs>
-                        <radialGradient
-                            id="modernGreenGrad"
-                            cx="0%"
-                            cy="0%"
-                            r="140%"
-                            fx="0%"
-                            fy="0%"
-                        >
-                            <stop offset="0%" stop-color="#16a34a" />
-                            <stop offset="40%" stop-color="#15803d" />
-                            <stop offset="100%" stop-color="#052e16" />
-                        </radialGradient>
-
-                        <pattern
-                            id="diagLines"
-                            width="12"
-                            height="12"
-                            patternUnits="userSpaceOnUse"
-                            patternTransform="rotate(30)"
-                        >
-                            <line
-                                x1="0"
-                                y1="0"
-                                x2="0"
-                                y2="12"
-                                stroke="rgba(255,255,255,0.03)"
-                                stroke-width="1"
-                            />
-                        </pattern>
-
-                        <linearGradient id="sheen" x1="0" x2="1" y1="0" y2="1">
-                            <stop
-                                offset="0%"
-                                stop-color="#ffffff"
-                                stop-opacity="0.1"
-                            />
-                            <stop
-                                offset="50%"
-                                stop-color="#ffffff"
-                                stop-opacity="0"
-                            />
-                            <stop
-                                offset="100%"
-                                stop-color="#000000"
-                                stop-opacity="0.05"
-                            />
-                        </linearGradient>
-                    </defs>
-
-                    <rect
-                        x="0"
-                        y="0"
-                        width="420"
-                        height="260"
-                        fill="url(#modernGreenGrad)"
-                    />
-                    <rect
-                        x="0"
-                        y="0"
-                        width="420"
-                        height="260"
-                        fill="url(#diagLines)"
-                    />
-                    <rect
-                        x="0"
-                        y="0"
-                        width="420"
-                        height="260"
-                        fill="url(#sheen)"
-                        style="mix-blend-mode: overlay"
-                    />
-                </svg>
-
-                <div
-                    class="flex items-center gap-3 px-5 py-3 bg-white/10 backdrop-blur-lg border-b border-white/10 relative z-10"
-                >
-                    <img
-                        src="/logo.png"
-                        class="h-10 w-10 drop-shadow-lg filter brightness-110"
-                        onerror="this.style.display='none'"
-                    />
-                    <div>
-                        <div class="flex items-center gap-1.5">
-                            <AcademicCapIcon
-                                class="w-5 h-5 text-yellow-300 drop-shadow-sm"
-                            />
-                            <h1
-                                class="text-[17px] font-extrabold uppercase text-yellow-300 tracking-wider font-serif leading-none drop-shadow-sm"
-                            >
-                                SMK TAMANSISWA
-                            </h1>
-                        </div>
-                        <p
-                            class="text-[9px] font-medium text-green-100/80 uppercase tracking-[0.3em] mt-1 ml-0.5"
-                        >
-                            Kartu Pelajar Digital
-                        </p>
-                    </div>
-                </div>
-
-                <div
-                    class="grid grid-cols-[90px_1fr_75px] gap-4 px-5 py-4 relative z-10 h-full items-start mt-1"
-                >
-                    <div
-                        class="w-[90px] h-[110px] rounded-xl overflow-hidden border-[2px] border-white/90 shadow-lg bg-white/10 backdrop-blur-sm relative group"
-                    >
-                        <div
-                            class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none z-10"
-                        ></div>
-                        <img
-                            :src="`https://ui-avatars.com/api/?name=${user.name}&background=random&color=fff&size=200&bold=true`"
-                            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-                    </div>
-
-                    <div class="text-white min-w-0 space-y-2.5 pt-0.5">
-                        <div>
-                            <p
-                                class="text-[9px] font-semibold text-green-200/80 uppercase tracking-widest mb-0.5"
-                            >
-                                Nama Lengkap
-                            </p>
-                            <p
-                                class="text-[15px] font-bold leading-tight capitalize truncate tracking-wide drop-shadow-sm"
-                            >
-                                {{ user.name }}
-                            </p>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <p
-                                    class="text-[9px] font-semibold text-green-200/80 uppercase tracking-widest mb-0.5"
-                                >
-                                    NISN
-                                </p>
-                                <p
-                                    class="font-mono text-[12px] font-medium tracking-wider"
-                                >
-                                    {{ user.nisn }}
-                                </p>
-                            </div>
-                            <div>
-                                <p
-                                    class="text-[9px] font-semibold text-green-200/80 uppercase tracking-widest mb-0.5"
-                                >
-                                    NIS
-                                </p>
-                                <p
-                                    class="font-mono text-[12px] font-medium tracking-wider"
-                                >
-                                    {{ user.nis }}
-                                </p>
-                            </div>
-                        </div>
-
-                        <div class="space-y-2.5">
-                            <div>
-                                <p
-                                    class="text-[9px] font-semibold text-green-200/80 uppercase tracking-widest mb-0.5"
-                                >
-                                    Tempat, Tgl Lahir
-                                </p>
-                                <p
-                                    class="text-[11px] font-medium tracking-wide"
-                                >
-                                    {{ user.ttl }}
-                                </p>
-                            </div>
-                            <div>
-                                <p
-                                    class="text-[9px] font-semibold text-green-200/80 uppercase tracking-widest mb-0.5"
-                                >
-                                    Kompetensi Keahlian
-                                </p>
-                                <p
-                                    class="text-[11px] font-bold tracking-wide text-yellow-200/90"
-                                >
-                                    {{ user.jurusan }}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="flex flex-col items-end pt-1">
-                        <div
-                            class="bg-white/95 p-1.5 rounded-xl shadow-md backdrop-blur-sm relative overflow-hidden"
-                        >
-                            <div
-                                class="absolute top-0 right-0 w-3 h-3 bg-yellow-400/50 blur-[8px]"
-                            ></div>
-                            <img
-                                :src="qrUrl"
-                                class="w-[75px] h-[75px] relative z-10"
-                                alt="QR"
-                            />
-                        </div>
-                        <span
-                            class="text-[8px] text-green-100/90 mt-2 text-center w-full font-semibold tracking-wider uppercase"
-                            >Scan Validasi</span
-                        >
-                    </div>
-                </div>
-
-                <div
-                    class="absolute bottom-0 left-0 w-full px-5 py-2.5 bg-[#022c22]/30 text-green-50/90 text-[9px] backdrop-blur-md border-t border-white/10 relative z-10 flex justify-between items-center uppercase font-bold tracking-[0.2em]"
-                >
-                    <div class="flex items-center gap-2">
-                        <span class="relative flex h-2 w-2">
-                            <span
-                                class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"
-                            ></span>
-                            <span
-                                class="relative inline-flex rounded-full h-2 w-2 bg-green-500"
-                            ></span>
-                        </span>
-                        <span>Status: Aktif</span>
-                    </div>
-                    <span class="opacity-80">Valid: 2025/2026</span>
-                </div>
+                    Kartu Pelajar Digital
+                </h2>
+                <p class="mt-4 text-lg text-slate-600">
+                    Unduh kartu pelajar resmi Anda. Gunakan versi digital ini
+                    untuk keperluan administrasi sekolah.
+                </p>
             </div>
 
-            <div class="mt-10 print:hidden">
-                <button
-                    @click="printCard"
-                    class="flex items-center gap-3 bg-gradient-to-r from-green-700 to-green-600 text-white px-10 py-3.5 rounded-full hover:from-green-800 hover:to-green-700 hover:scale-[1.02] transition-all duration-300 shadow-xl hover:shadow-green-800/30 font-bold text-sm tracking-wider uppercase group"
-                >
-                    <PrinterIcon class="w-5 h-5 group-hover:animate-pulse" />
-                    Cetak Kartu Pelajar
-                </button>
+            <div
+                class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-8 items-start justify-items-center"
+            >
+                <div class="flex flex-col items-center w-full group">
+                    <div class="mb-4 flex items-center gap-2">
+                        <span
+                            class="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-bold uppercase rounded-full tracking-wider"
+                            >Sisi Depan</span
+                        >
+                    </div>
+
+                    <div
+                        class="card-scaler-wrapper shadow-2xl rounded-xl ring-1 ring-black/5 transition-transform duration-300 group-hover:scale-[1.02]"
+                    >
+                        <div class="card-scaler">
+                            <div ref="frontRef" class="card-canvas">
+                                <img
+                                    v-if="template?.background_path"
+                                    :src="`/${template.background_path}`"
+                                    class="bg-img"
+                                />
+                                <div
+                                    v-else
+                                    class="bg-placeholder bg-gradient-to-br from-blue-600 to-indigo-700"
+                                ></div>
+
+                                <div
+                                    v-for="el in renderedFront"
+                                    :key="el.id"
+                                    class="absolute z-10 whitespace-pre"
+                                    :style="{
+                                        left: el.x + 'px',
+                                        top: el.y + 'px',
+                                        width: el.width
+                                            ? el.width + 'px'
+                                            : 'auto',
+                                        height: el.height
+                                            ? el.height + 'px'
+                                            : 'auto',
+                                    }"
+                                >
+                                    <p
+                                        v-if="el.type.includes('text')"
+                                        :style="{
+                                            fontSize: el.fontSize + 'px',
+                                            fontWeight: el.fontWeight,
+                                            fontFamily: el.fontFamily,
+                                            color: el.color,
+                                            textAlign: el.align,
+                                            lineHeight: 1.2,
+                                            opacity: el.opacity,
+                                            letterSpacing:
+                                                (el.letterSpacing || 0) + 'px',
+                                        }"
+                                    >
+                                        {{ el.content }}
+                                    </p>
+                                    <img
+                                        v-if="['photo', 'qr'].includes(el.type)"
+                                        :src="el.src"
+                                        class="w-full h-full object-cover"
+                                        :style="{ opacity: el.opacity }"
+                                        crossorigin="anonymous"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button
+                        @click="downloadSingleSide(frontRef, 'Depan', 'front')"
+                        :disabled="isGeneratingFront"
+                        class="mt-8 inline-flex items-center justify-center px-8 py-3 border border-transparent text-sm font-medium rounded-full text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-lg transition-all disabled:opacity-70 disabled:cursor-wait w-full sm:w-auto"
+                    >
+                        <svg
+                            v-if="isGeneratingFront"
+                            class="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                        >
+                            <circle
+                                class="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                stroke-width="4"
+                            ></circle>
+                            <path
+                                class="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                        </svg>
+                        <ArrowDownTrayIcon v-else class="-ml-1 mr-2 h-5 w-5" />
+                        {{
+                            isGeneratingFront
+                                ? "Memproses..."
+                                : "Unduh Sisi Depan"
+                        }}
+                    </button>
+                </div>
+
+                <div class="flex flex-col items-center w-full group">
+                    <div class="mb-4 flex items-center gap-2">
+                        <span
+                            class="px-3 py-1 bg-slate-100 text-slate-800 text-xs font-bold uppercase rounded-full tracking-wider"
+                            >Sisi Belakang</span
+                        >
+                    </div>
+
+                    <div
+                        class="card-scaler-wrapper shadow-2xl rounded-xl ring-1 ring-black/5 transition-transform duration-300 group-hover:scale-[1.02]"
+                    >
+                        <div class="card-scaler">
+                            <div ref="backRef" class="card-canvas">
+                                <img
+                                    v-if="template?.background_back_path"
+                                    :src="`/${template.background_back_path}`"
+                                    class="bg-img"
+                                />
+                                <div
+                                    v-else
+                                    class="bg-placeholder bg-gradient-to-br from-slate-700 to-slate-900"
+                                ></div>
+
+                                <div
+                                    v-for="el in renderedBack"
+                                    :key="el.id"
+                                    class="absolute z-10 whitespace-pre"
+                                    :style="{
+                                        left: el.x + 'px',
+                                        top: el.y + 'px',
+                                        width: el.width
+                                            ? el.width + 'px'
+                                            : 'auto',
+                                        height: el.height
+                                            ? el.height + 'px'
+                                            : 'auto',
+                                    }"
+                                >
+                                    <p
+                                        v-if="el.type.includes('text')"
+                                        :style="{
+                                            fontSize: el.fontSize + 'px',
+                                            fontWeight: el.fontWeight,
+                                            fontFamily: el.fontFamily,
+                                            color: el.color,
+                                            textAlign: el.align,
+                                            lineHeight: 1.2,
+                                            opacity: el.opacity,
+                                            letterSpacing:
+                                                (el.letterSpacing || 0) + 'px',
+                                        }"
+                                    >
+                                        {{ el.content }}
+                                    </p>
+                                    <img
+                                        v-if="['qr'].includes(el.type)"
+                                        :src="el.src"
+                                        class="w-full h-full object-cover"
+                                        :style="{ opacity: el.opacity }"
+                                        crossorigin="anonymous"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button
+                        @click="downloadSingleSide(backRef, 'Belakang', 'back')"
+                        :disabled="isGeneratingBack"
+                        class="mt-8 inline-flex items-center justify-center px-8 py-3 border border-transparent text-sm font-medium rounded-full text-white bg-slate-800 hover:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 shadow-lg transition-all disabled:opacity-70 disabled:cursor-wait w-full sm:w-auto"
+                    >
+                        <svg
+                            v-if="isGeneratingBack"
+                            class="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                        >
+                            <circle
+                                class="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                stroke-width="4"
+                            ></circle>
+                            <path
+                                class="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                        </svg>
+                        <ArrowDownTrayIcon v-else class="-ml-1 mr-2 h-5 w-5" />
+                        {{
+                            isGeneratingBack
+                                ? "Memproses..."
+                                : "Unduh Sisi Belakang"
+                        }}
+                    </button>
+                </div>
             </div>
         </div>
     </AuthenticatedLayout>
 </template>
 
-<style>
-@media print {
-    body * {
-        visibility: hidden;
+<style scoped>
+/* TEKNIK RESPONSIVE SCALING */
+/* Membungkus kartu agar ukurannya mengecil di HP tapi koordinat tetap akurat */
+.card-scaler-wrapper {
+    position: relative;
+    width: 323px;
+    height: 204px;
+    /* Default scale untuk desktop agar terlihat besar & jelas */
+    transform: scale(1.4);
+    transform-origin: top center;
+    margin-bottom: 50px; /* Kompensasi ruang kosong akibat scale */
+}
+
+/* Responsif untuk Tablet */
+@media (max-width: 1024px) {
+    .card-scaler-wrapper {
+        transform: scale(1.2);
+        margin-bottom: 40px;
     }
-    #kartu-pelajar,
-    #kartu-pelajar * {
-        visibility: visible;
+}
+
+/* Responsif untuk HP */
+@media (max-width: 640px) {
+    .card-scaler-wrapper {
+        transform: scale(0.9); /* Mengecil agar muat di layar potrait */
+        margin-bottom: 0;
     }
-    #kartu-pelajar {
-        position: fixed;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%);
-        margin: 0;
-        border: 0;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-        box-shadow: none !important;
-        border-radius: 16px !important; /* Pastikan rounded corner tercetak */
+}
+
+/* Untuk HP yang sangat kecil (iPhone SE dsb) */
+@media (max-width: 380px) {
+    .card-scaler-wrapper {
+        transform: scale(0.8);
     }
-    nav,
-    header,
-    .print\:hidden {
-        display: none !important;
-    }
+}
+
+.card-canvas {
+    width: 323px; /* Ukuran ASLI kartu ID-1 (Jangan diubah agar hasil cetak presisi) */
+    height: 204px;
+    background: white;
+    position: relative;
+    overflow: hidden;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.bg-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+}
+.bg-placeholder {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    inset: 0;
+    z-index: 0;
 }
 </style>

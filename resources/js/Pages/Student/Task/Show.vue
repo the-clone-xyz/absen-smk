@@ -9,8 +9,10 @@ import {
     PaperClipIcon,
     CheckCircleIcon,
     StarIcon,
+    LockClosedIcon, // Tambah icon Gembok
 } from "@heroicons/vue/24/solid";
 import { ref, computed } from "vue";
+import Swal from "sweetalert2";
 
 const props = defineProps({
     task: Object,
@@ -34,7 +36,16 @@ const form = useForm({
 const fileError = ref(null);
 const isEditing = ref(false);
 
+// --- LOGIKA DEADLINE ---
+const isOverdue = computed(() => {
+    if (!props.task.deadline) return false;
+    return new Date() > new Date(props.task.deadline);
+});
+// ----------------------
+
 const handleFile = (e) => {
+    if (isOverdue.value) return; // Cegah upload jika lewat waktu
+
     const file = e.target.files[0];
     fileError.value = null;
     form.file = null;
@@ -50,13 +61,31 @@ const handleFile = (e) => {
 };
 
 const submitTask = () => {
-    // Pastikan route ini benar di web.php
+    // Cek lagi di frontend sebelum kirim
+    if (isOverdue.value) {
+        Swal.fire("Terlambat", "Waktu pengumpulan sudah habis!", "error");
+        return;
+    }
+
     form.post(route("student.tasks.submit", props.task.id), {
         forceFormData: true,
         preserveScroll: true,
         onSuccess: () => {
+            Swal.fire("Berhasil", "Tugas berhasil dikumpulkan", "success");
             isEditing.value = false;
             form.reset("file");
+        },
+        onError: (errors) => {
+            // Tangkap error dari backend jika ada yang inject script
+            if (errors.error) {
+                Swal.fire("Gagal", errors.error, "error");
+            } else {
+                Swal.fire(
+                    "Gagal",
+                    "Terjadi kesalahan saat mengupload.",
+                    "error"
+                );
+            }
         },
     });
 };
@@ -102,9 +131,15 @@ const isGraded = computed(
                         class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 relative overflow-hidden"
                     >
                         <div
-                            class="absolute top-0 right-0 bg-red-100 text-red-600 px-4 py-1.5 rounded-bl-xl text-xs font-bold flex items-center gap-1"
+                            class="absolute top-0 right-0 px-4 py-1.5 rounded-bl-xl text-xs font-bold flex items-center gap-1"
+                            :class="
+                                isOverdue
+                                    ? 'bg-red-600 text-white'
+                                    : 'bg-red-100 text-red-600'
+                            "
                         >
-                            <CalendarIcon class="w-3 h-3" /> Deadline:
+                            <CalendarIcon class="w-3 h-3" />
+                            {{ isOverdue ? "Waktu Habis:" : "Deadline:" }}
                             {{ formatDate(task.deadline) }}
                         </div>
 
@@ -208,9 +243,6 @@ const isGraded = computed(
                                         >Lihat File Saya</a
                                     >
                                 </div>
-                                <p v-else class="text-gray-500 italic">
-                                    - Tidak ada file -
-                                </p>
                             </div>
                             <div class="text-sm">
                                 <p class="text-xs text-gray-400 font-bold mb-1">
@@ -222,25 +254,51 @@ const isGraded = computed(
                                     {{ submission.notes || "-" }}
                                 </p>
                             </div>
+
                             <button
+                                v-if="!isOverdue"
                                 @click="isEditing = true"
                                 class="w-full mt-4 bg-white border border-gray-300 text-gray-700 py-2 rounded-lg text-sm font-bold hover:bg-gray-50 transition"
                             >
                                 Edit Jawaban / Upload Ulang
                             </button>
+                            <div
+                                v-else
+                                class="text-center mt-4 text-xs text-red-500 font-bold bg-red-50 p-2 rounded border border-red-100"
+                            >
+                                <LockClosedIcon class="w-3 h-3 inline mr-1" />
+                                Waktu habis. Tidak bisa edit lagi.
+                            </div>
                         </div>
                     </div>
 
                     <div
                         v-else
-                        class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6"
+                        class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 relative overflow-hidden"
                     >
+                        <div
+                            v-if="isOverdue"
+                            class="absolute inset-0 z-30 bg-slate-50/95 flex flex-col items-center justify-center text-center p-6 backdrop-blur-sm"
+                        >
+                            <div class="bg-red-100 p-3 rounded-full mb-3">
+                                <LockClosedIcon class="w-8 h-8 text-red-500" />
+                            </div>
+                            <h3 class="text-lg font-black text-gray-800 mb-1">
+                                Pengumpulan Ditutup
+                            </h3>
+                            <p class="text-xs text-gray-500 leading-relaxed">
+                                Maaf, batas waktu pengumpulan tugas ini telah
+                                berakhir. Kamu tidak dapat mengirim tugas lagi.
+                            </p>
+                        </div>
+
                         <h3
                             class="font-bold text-gray-800 mb-4 flex items-center gap-2"
                         >
                             <CloudArrowUpIcon class="w-5 h-5 text-indigo-600" />
                             {{ isEditing ? "Edit Jawaban" : "Upload Jawaban" }}
                         </h3>
+
                         <form @submit.prevent="submitTask" class="space-y-4">
                             <div>
                                 <label
@@ -250,7 +308,8 @@ const isGraded = computed(
                                 <textarea
                                     v-model="form.notes"
                                     rows="3"
-                                    class="w-full rounded-lg border-gray-300 text-sm focus:ring-indigo-500"
+                                    :disabled="isOverdue"
+                                    class="w-full rounded-lg border-gray-300 text-sm focus:ring-indigo-500 disabled:bg-gray-100"
                                 ></textarea>
                             </div>
                             <div>
@@ -259,18 +318,21 @@ const isGraded = computed(
                                     >File Tugas</label
                                 >
                                 <div
-                                    class="border-2 border-dashed rounded-xl p-6 text-center hover:bg-gray-50 transition cursor-pointer relative"
-                                    :class="
+                                    class="border-2 border-dashed rounded-xl p-6 text-center transition cursor-pointer relative"
+                                    :class="[
                                         fileError
                                             ? 'border-red-300 bg-red-50'
-                                            : 'border-gray-300'
-                                    "
+                                            : 'border-gray-300 hover:bg-gray-50',
+                                        isOverdue ? 'opacity-50' : '',
+                                    ]"
                                 >
                                     <input
                                         type="file"
                                         @change="handleFile"
-                                        class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                        :disabled="isOverdue"
+                                        class="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
                                     />
+
                                     <div
                                         v-if="form.file"
                                         class="flex flex-col items-center text-indigo-600"
@@ -315,7 +377,7 @@ const isGraded = computed(
                                 </button>
                                 <button
                                     type="submit"
-                                    :disabled="form.processing"
+                                    :disabled="form.processing || isOverdue"
                                     class="flex-1 bg-indigo-600 text-white py-2.5 rounded-lg text-sm font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-200 disabled:opacity-50 flex justify-center items-center gap-2"
                                 >
                                     <span

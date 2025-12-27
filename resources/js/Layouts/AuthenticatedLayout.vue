@@ -5,25 +5,24 @@ import DropdownLink from "@/Components/DropdownLink.vue";
 import NavLink from "@/Components/NavLink.vue";
 import ResponsiveNavLink from "@/Components/ResponsiveNavLink.vue";
 import { Link, usePage } from "@inertiajs/vue3";
-import { useSwal } from "@/Composables/useSwal";
+import { useSwal } from "@/Composables/useSwal"; // Pastikan composable ini ada
 import Footer from "@/Components/Footer.vue";
-import {
-    CheckCircleIcon,
-    XCircleIcon,
-    XMarkIcon,
-    UserCircleIcon,
-} from "@heroicons/vue/24/solid";
+import { UserCircleIcon } from "@heroicons/vue/24/solid";
+
+// Inisialisasi SweetAlert dari Composable Bapak
 const Swal = useSwal();
 const showingNavigationDropdown = ref(false);
 const page = usePage();
-const showFlash = ref(false);
 
 const user = computed(() => page.props.auth.user);
 const role = computed(() => user.value?.role);
 
+// --- PERBAIKAN: Watcher Hanya Untuk Toast ---
 watch(
     () => page.props.flash,
     (newFlash) => {
+        // Hapus logika showFlash (Banner)
+        // Cukup panggil Toast saja
         if (newFlash.success) {
             Swal.toast("success", newFlash.success);
         }
@@ -31,9 +30,10 @@ watch(
             Swal.toast("error", newFlash.error);
         }
     },
-    { deep: true }
+    { deep: true, immediate: true }
 );
 </script>
+
 <template>
     <div>
         <div
@@ -50,7 +50,11 @@ watch(
                                     <img
                                         src="/logo_tamsis.png"
                                         class="block h-10 w-auto hover:scale-110 transition duration-300 drop-shadow-sm"
-                                        alt="Logo Sekolah"
+                                        alt="Logo"
+                                        @error="
+                                            $event.target.src =
+                                                'https://ui-avatars.com/api/?name=SMK&background=0D8ABC&color=fff'
+                                        "
                                     />
                                 </Link>
                             </div>
@@ -150,7 +154,7 @@ watch(
                                                 <UserCircleIcon
                                                     class="w-5 h-5 mr-2 text-green-600"
                                                 />
-                                                {{ user.name }}
+                                                {{ user?.name }}
                                                 <svg
                                                     class="ms-2 -me-0.5 h-4 w-4"
                                                     xmlns="http://www.w3.org/2000/svg"
@@ -169,16 +173,14 @@ watch(
                                     <template #content>
                                         <DropdownLink
                                             :href="route('profile.edit')"
+                                            >Profile</DropdownLink
                                         >
-                                            Profile
-                                        </DropdownLink>
                                         <DropdownLink
                                             :href="route('logout')"
                                             method="post"
                                             as="button"
+                                            >Log Out</DropdownLink
                                         >
-                                            Log Out
-                                        </DropdownLink>
                                     </template>
                                 </Dropdown>
                             </div>
@@ -295,23 +297,22 @@ watch(
                     <div class="pt-4 pb-1 border-t border-gray-200">
                         <div class="px-4">
                             <div class="font-medium text-base text-gray-800">
-                                {{ user.name }}
+                                {{ user?.name }}
                             </div>
                             <div class="font-medium text-sm text-gray-500">
-                                {{ user.email }}
+                                {{ user?.email }}
                             </div>
                         </div>
                         <div class="mt-3 space-y-1">
-                            <ResponsiveNavLink :href="route('profile.edit')">
-                                Profile
-                            </ResponsiveNavLink>
+                            <ResponsiveNavLink :href="route('profile.edit')"
+                                >Profile</ResponsiveNavLink
+                            >
                             <ResponsiveNavLink
                                 :href="route('logout')"
                                 method="post"
                                 as="button"
+                                >Log Out</ResponsiveNavLink
                             >
-                                Log Out
-                            </ResponsiveNavLink>
                         </div>
                     </div>
                 </div>
@@ -328,73 +329,6 @@ watch(
 
             <main class="relative flex-1 bg-gray-50">
                 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 pb-12">
-                    <Transition
-                        enter-active-class="transform ease-out duration-300 transition"
-                        enter-from-class="translate-y-2 opacity-0 scale-95"
-                        enter-to-class="translate-y-0 opacity-100 scale-100"
-                        leave-active-class="transition ease-in duration-100"
-                        leave-from-class="opacity-100 scale-100"
-                        leave-to-class="opacity-0 scale-95"
-                    >
-                        <div
-                            v-if="$page.props.flash.success && showFlash"
-                            class="bg-green-50 border-l-4 border-green-500 p-4 rounded-r-md shadow-md flex justify-between items-start mb-6"
-                        >
-                            <div class="flex">
-                                <div class="flex-shrink-0">
-                                    <CheckCircleIcon
-                                        class="h-6 w-6 text-green-500"
-                                        aria-hidden="true"
-                                    />
-                                </div>
-                                <div class="ml-3">
-                                    <h3
-                                        class="text-sm font-bold text-green-800"
-                                    >
-                                        Berhasil!
-                                    </h3>
-                                    <div class="mt-1 text-sm text-green-700">
-                                        {{ $page.props.flash.success }}
-                                    </div>
-                                </div>
-                            </div>
-                            <button
-                                @click="showFlash = false"
-                                class="text-green-400 hover:text-green-600 transition"
-                            >
-                                <XMarkIcon class="w-5 h-5" />
-                            </button>
-                        </div>
-
-                        <div
-                            v-else-if="$page.props.flash.error && showFlash"
-                            class="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-md shadow-md flex justify-between items-start mb-6"
-                        >
-                            <div class="flex">
-                                <div class="flex-shrink-0">
-                                    <XCircleIcon
-                                        class="h-6 w-6 text-red-500"
-                                        aria-hidden="true"
-                                    />
-                                </div>
-                                <div class="ml-3">
-                                    <h3 class="text-sm font-bold text-red-800">
-                                        Terjadi Kesalahan
-                                    </h3>
-                                    <div class="mt-1 text-sm text-red-700">
-                                        {{ $page.props.flash.error }}
-                                    </div>
-                                </div>
-                            </div>
-                            <button
-                                @click="showFlash = false"
-                                class="text-red-400 hover:text-red-600 transition"
-                            >
-                                <XMarkIcon class="w-5 h-5" />
-                            </button>
-                        </div>
-                    </Transition>
-
                     <slot />
                 </div>
             </main>

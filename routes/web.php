@@ -21,6 +21,8 @@ use App\Http\Controllers\AdminStudentController;
 use App\Http\Controllers\AdminTeacherController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\EbookController;
+use App\Http\Controllers\CardTemplateController;
+use App\Http\Controllers\CardController;
 
 
 /*
@@ -36,7 +38,7 @@ Route::get('/', function () {
         'canLogin'       => Route::has('login'),
         'canRegister'    => Route::has('register'),
         'laravelVersion' => Application::VERSION,
-        'schoolName'     => $setting ? $setting->school_name : 'SMK TAMANSISWA',
+        'schoolName'     => $setting ? $setting->school_name : 'SMKS TAMANSISWA LUBUK PAKAM 2',
         'phpVersion'     => PHP_VERSION,
     ]);
 });
@@ -63,8 +65,8 @@ Route::middleware(['auth', 'verified', 'role:student'])
         
         // Dashboard & Kartu
         Route::get('/dashboard', [StudentController::class, 'index'])->name('dashboard');
-        Route::get('/kartu-pelajar', function () { return Inertia::render('Student/Card'); })->name('card');
-
+       Route::get('/kartu-pelajar', [CardController::class, 'index'])->name('card');
+        
         // Absensi (Izin & Rekap)
         Route::controller(AttendanceController::class)->group(function () {
             Route::get('/izin', 'izin')->name('attendance.izin');
@@ -142,8 +144,12 @@ Route::middleware(['auth', 'verified', 'role:admin'])
     ->name('admin.')
     ->group(function () {
         
-        Route::get('/dashboard', [AdminController::class, 'index'])->name('dashboard');
+          // Halaman Desainer
+        Route::get('/card-designer', [CardTemplateController::class, 'index'])->name('card.designer');
+        // Simpan Desain
+        Route::post('/card-designer', [CardTemplateController::class, 'store'])->name('card.store');
 
+        Route::get('/dashboard', [AdminController::class, 'index'])->name('dashboard');
         // Manajemen User & Role
         Route::get('/users', [AdminController::class, 'userManagement'])->name('users.index');
         Route::patch('/users/{user}/update-role', [AdminController::class, 'updateRole'])->name('users.updateRole');
@@ -194,6 +200,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])
 // ZONA UMUM (User Login: Guru/Siswa/Admin)
 // =========================================================================
 Route::middleware(['auth', 'verified'])->group(function () {
+    
     
     // --- FITUR SCAN ABSENSI (CRITICAL) ---
     // Security: Throttle 6 request per menit untuk mencegah spam scan

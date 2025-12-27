@@ -10,129 +10,170 @@ import {
     CheckCircleIcon,
     XCircleIcon,
     ChevronRightIcon,
+    UserIcon,
+    CloudArrowDownIcon,
 } from "@heroicons/vue/24/solid";
 
 const props = defineProps({
     schedule: Object,
-    journal: Object,
+    journal: Object, // Berisi data jurnal harian guru (topik, catatan, file modul)
     tasks: Array,
     student: Object,
 });
 
-// Format Tanggal
-const formatDate = (date) => {
-    return new Date(date).toLocaleDateString("id-ID", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-    });
+// Format Waktu (HH:mm)
+const formatTime = (time) => {
+    if (!time) return "00:00";
+    return time.substring(0, 5);
 };
-
-const formatTime = (time) => time.substring(0, 5);
 </script>
 
 <template>
-    <Head :title="schedule.subject.name" />
+    <Head :title="schedule?.subject?.name || 'Detail Pelajaran'" />
 
     <AuthenticatedLayout>
         <template #header>
             <div class="flex items-center gap-4">
                 <Link
                     :href="route('student.dashboard')"
-                    class="p-2 rounded-full hover:bg-gray-200 transition text-gray-500"
+                    class="p-2 rounded-full hover:bg-gray-200 transition text-gray-500 bg-white shadow-sm border border-gray-100"
                 >
                     <ArrowLeftIcon class="w-5 h-5" />
                 </Link>
                 <div>
                     <h2 class="font-bold text-xl text-gray-800 leading-tight">
-                        {{ schedule.subject.name }}
+                        {{ schedule?.subject?.name }}
                     </h2>
-                    <p class="text-sm text-gray-500 flex items-center gap-2">
-                        <span>{{ schedule.teacher.user.name }}</span> •
-                        <span
-                            class="flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded text-xs font-bold"
+                    <div
+                        class="flex flex-wrap items-center gap-2 mt-1 text-sm text-gray-500"
+                    >
+                        <div class="flex items-center gap-1">
+                            <UserIcon class="w-3 h-3" />
+                            <span>{{ schedule?.teacher?.user?.name }}</span>
+                        </div>
+                        <span class="text-gray-300">•</span>
+                        <div
+                            class="flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs font-bold border border-blue-100"
                         >
                             <ClockIcon class="w-3 h-3" />
-                            {{ formatTime(schedule.start_time) }} -
-                            {{ formatTime(schedule.end_time) }}
-                        </span>
-                    </p>
+                            {{ formatTime(schedule?.start_time) }} -
+                            {{ formatTime(schedule?.end_time) }}
+                        </div>
+                    </div>
                 </div>
             </div>
         </template>
 
-        <div class="py-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div class="lg:col-span-2 space-y-6">
                     <div
-                        class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
+                        class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden"
                     >
                         <div
-                            class="px-6 py-4 border-b border-gray-100 bg-blue-50 flex items-center gap-2"
+                            class="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-blue-50 to-white flex items-center gap-3"
                         >
-                            <BookOpenIcon class="w-5 h-5 text-blue-600" />
-                            <h3 class="font-bold text-gray-800">
+                            <div
+                                class="p-2 bg-blue-100 rounded-lg text-blue-600"
+                            >
+                                <BookOpenIcon class="w-5 h-5" />
+                            </div>
+                            <h3 class="font-bold text-slate-800 text-lg">
                                 Materi Hari Ini
                             </h3>
                         </div>
 
                         <div class="p-6">
-                            <div v-if="journal">
-                                <h4
-                                    class="text-lg font-bold text-gray-800 mb-2"
-                                >
-                                    {{ journal.topic }}
-                                </h4>
-                                <div
-                                    class="prose text-gray-600 text-sm whitespace-pre-line mb-6"
-                                >
-                                    {{ journal.notes }}
+                            <div v-if="journal" class="space-y-6">
+                                <div>
+                                    <h4
+                                        class="text-xl font-bold text-slate-800 mb-2"
+                                    >
+                                        {{ journal.topic }}
+                                    </h4>
+                                    <div
+                                        class="prose prose-sm text-slate-600 leading-relaxed whitespace-pre-line bg-slate-50 p-4 rounded-xl border border-slate-100"
+                                    >
+                                        {{
+                                            journal.notes ||
+                                            "Tidak ada catatan tambahan."
+                                        }}
+                                    </div>
                                 </div>
 
-                                <div
-                                    v-if="journal.module_path"
-                                    class="bg-gray-50 border border-gray-200 rounded-lg p-4 flex items-center justify-between"
-                                >
-                                    <div class="flex items-center gap-3">
-                                        <div
-                                            class="bg-white p-2 rounded shadow-sm"
-                                        >
-                                            <DocumentTextIcon
-                                                class="w-6 h-6 text-blue-500"
-                                            />
-                                        </div>
-                                        <div>
-                                            <p
-                                                class="text-sm font-bold text-gray-700"
-                                            >
-                                                Lampiran Materi
-                                            </p>
-                                            <p class="text-xs text-gray-400">
-                                                Klik tombol untuk membaca
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <Link
-                                        :href="
-                                            route('viewer.show', {
-                                                path: journal.module_path,
-                                            })
-                                        "
-                                        class="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-blue-700 transition shadow"
+                                <div v-if="journal.module_path">
+                                    <h5
+                                        class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3"
                                     >
-                                        Baca Materi
-                                    </Link>
+                                        Lampiran Dokumen
+                                    </h5>
+                                    <div
+                                        class="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-xl hover:border-blue-300 hover:shadow-md transition group"
+                                    >
+                                        <div class="flex items-center gap-4">
+                                            <div
+                                                class="p-3 bg-red-50 text-red-500 rounded-lg"
+                                            >
+                                                <DocumentTextIcon
+                                                    class="w-8 h-8"
+                                                />
+                                            </div>
+                                            <div>
+                                                <p
+                                                    class="font-bold text-slate-700 group-hover:text-blue-600 transition"
+                                                >
+                                                    Modul Pembelajaran
+                                                </p>
+                                                <p
+                                                    class="text-xs text-slate-400"
+                                                >
+                                                    Klik tombol di samping untuk
+                                                    mengunduh
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <a
+                                            :href="
+                                                route('viewer.download', {
+                                                    path: journal.module_path,
+                                                })
+                                            "
+                                            class="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 transition shadow-sm active:scale-95"
+                                        >
+                                            <CloudArrowDownIcon
+                                                class="w-4 h-4"
+                                            />
+                                            Download
+                                        </a>
+                                    </div>
+                                </div>
+                                <div
+                                    v-else
+                                    class="text-sm text-slate-400 italic bg-slate-50 p-3 rounded-lg border border-dashed border-slate-200 text-center"
+                                >
+                                    Tidak ada file lampiran untuk materi ini.
                                 </div>
                             </div>
 
-                            <div v-else class="text-center py-10 text-gray-400">
+                            <div
+                                v-else
+                                class="flex flex-col items-center justify-center py-12 text-center"
+                            >
                                 <div
-                                    class="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3"
+                                    class="bg-slate-50 w-20 h-20 rounded-full flex items-center justify-center mb-4"
                                 >
-                                    <BookOpenIcon class="w-8 h-8 opacity-50" />
+                                    <BookOpenIcon
+                                        class="w-10 h-10 text-slate-300"
+                                    />
                                 </div>
-                                <p class="text-sm">
-                                    Guru belum mengisi jurnal materi hari ini.
+                                <h4 class="text-slate-600 font-bold">
+                                    Belum Ada Materi
+                                </h4>
+                                <p
+                                    class="text-slate-400 text-sm max-w-xs mx-auto mt-1"
+                                >
+                                    Guru belum menginput jurnal atau materi
+                                    untuk pertemuan hari ini.
                                 </p>
                             </div>
                         </div>
@@ -141,24 +182,31 @@ const formatTime = (time) => time.substring(0, 5);
 
                 <div class="space-y-6">
                     <div
-                        class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden h-full"
+                        class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden h-full flex flex-col"
                     >
                         <div
-                            class="px-5 py-4 border-b border-gray-100 bg-purple-50 flex items-center gap-2"
+                            class="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-purple-50 to-white flex items-center gap-3"
                         >
-                            <ClipboardDocumentListIcon
-                                class="w-5 h-5 text-purple-600"
-                            />
-                            <h3 class="font-bold text-gray-800">Tugas Kelas</h3>
+                            <div
+                                class="p-2 bg-purple-100 rounded-lg text-purple-600"
+                            >
+                                <ClipboardDocumentListIcon class="w-5 h-5" />
+                            </div>
+                            <h3 class="font-bold text-slate-800 text-lg">
+                                Tugas Kelas
+                            </h3>
                         </div>
 
-                        <div class="p-2 space-y-2">
+                        <div class="p-4 space-y-3 flex-grow bg-slate-50/50">
                             <div
-                                v-if="tasks.length === 0"
-                                class="text-center py-8 text-gray-400"
+                                v-if="!tasks || tasks.length === 0"
+                                class="flex flex-col items-center justify-center py-10 text-center h-full"
                             >
-                                <p class="text-sm italic">
-                                    Tidak ada tugas aktif.
+                                <ClipboardDocumentListIcon
+                                    class="w-12 h-12 text-slate-200 mb-2"
+                                />
+                                <p class="text-slate-400 text-sm italic">
+                                    Tidak ada tugas aktif saat ini.
                                 </p>
                             </div>
 
@@ -166,39 +214,53 @@ const formatTime = (time) => time.substring(0, 5);
                                 v-for="task in tasks"
                                 :key="task.id"
                                 :href="route('student.tasks.show', task.id)"
-                                class="block bg-white border border-gray-200 rounded-lg p-4 hover:border-purple-400 hover:shadow-md transition group relative overflow-hidden"
+                                class="block bg-white border border-slate-200 rounded-xl p-4 hover:border-purple-400 hover:shadow-md transition-all group relative overflow-hidden"
                             >
-                                <div class="flex justify-between items-start">
-                                    <div class="flex-grow pr-2">
+                                <div
+                                    class="absolute top-0 right-0 w-16 h-16 bg-purple-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-150"
+                                ></div>
+
+                                <div
+                                    class="relative z-10 flex justify-between items-start"
+                                >
+                                    <div class="flex-grow pr-4">
                                         <h4
-                                            class="font-bold text-gray-800 text-sm mb-1 group-hover:text-purple-700"
+                                            class="font-bold text-slate-800 text-sm mb-1 group-hover:text-purple-700 transition-colors line-clamp-1"
                                         >
                                             {{ task.title }}
                                         </h4>
                                         <p
-                                            class="text-[10px] text-gray-400 line-clamp-1 mb-2"
+                                            class="text-xs text-slate-500 line-clamp-2 mb-3 leading-relaxed"
                                         >
-                                            {{ task.description }}
+                                            {{
+                                                task.description ||
+                                                "Tidak ada deskripsi singkat."
+                                            }}
                                         </p>
 
                                         <div
                                             v-if="task.my_submission"
-                                            class="inline-flex items-center gap-1 bg-green-100 text-green-700 px-2 py-1 rounded text-[10px] font-bold"
+                                            class="inline-flex items-center gap-1.5 bg-green-50 text-green-700 px-2.5 py-1 rounded-md text-[10px] font-bold border border-green-100"
                                         >
-                                            <CheckCircleIcon class="w-3 h-3" />
-                                            Sudah Dikumpul
+                                            <CheckCircleIcon
+                                                class="w-3.5 h-3.5"
+                                            />
+                                            Selesai
                                         </div>
                                         <div
                                             v-else
-                                            class="inline-flex items-center gap-1 bg-red-100 text-red-700 px-2 py-1 rounded text-[10px] font-bold"
+                                            class="inline-flex items-center gap-1.5 bg-red-50 text-red-600 px-2.5 py-1 rounded-md text-[10px] font-bold border border-red-100"
                                         >
-                                            <XCircleIcon class="w-3 h-3" />
-                                            Belum Dikumpul
+                                            <XCircleIcon class="w-3.5 h-3.5" />
+                                            Belum
                                         </div>
                                     </div>
-                                    <ChevronRightIcon
-                                        class="w-4 h-4 text-gray-300 group-hover:text-purple-500"
-                                    />
+
+                                    <div class="self-center">
+                                        <ChevronRightIcon
+                                            class="w-5 h-5 text-slate-300 group-hover:text-purple-500 transition-colors"
+                                        />
+                                    </div>
                                 </div>
                             </Link>
                         </div>
